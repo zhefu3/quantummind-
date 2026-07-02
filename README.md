@@ -47,6 +47,9 @@ QM_BACKEND=openai    QM_MODEL=gpt-4o            python -m quantummind.run --all
 Backend selection: explicit `QM_BACKEND` wins; otherwise Claude if `ANTHROPIC_API_KEY`
 is present; otherwise mock. Outputs land in `outputs/`.
 
+Real backends default to a 120s per-request timeout (override with `QM_TIMEOUT=<seconds>`)
+so a dropped connection raises instead of hanging the run indefinitely.
+
 ## Evaluation (Layer 1, proposal 5.1)
 
 `evaluate.py` runs the pipeline on a labelled test set and compares the recommended
