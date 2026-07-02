@@ -44,6 +44,17 @@ ALGORITHMS = [
                         "note": "HARD NEGATIVE: looks like HHL but full readout voids speedup"},
     },
     {
+        "name": "All-pairs shortest paths, return the full distance matrix",
+        "description": "Given a weighted graph with V vertices, compute the shortest "
+                       "path distance between EVERY pair of vertices and return the "
+                       "complete V x V distance matrix.",
+        "pseudocode": "for each pair (u,v): d[u][v] = shortest_path(u, v); return full matrix",
+        "known_label": {"primitive": "none", "speedup": "none",
+                        "note": "HARD NEGATIVE: graph problem suggests quantum walk, but "
+                                "outputting the full O(V^2) distance matrix is output-dense "
+                                "-- readout voids any speedup"},
+    },
+    {
         "name": "Monte Carlo expectation estimation",
         "description": "Estimate the expectation of a random variable to precision eps by "
                        "averaging many samples.",
