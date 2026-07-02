@@ -27,7 +27,8 @@ DEFAULT_MODELS = {
 
 class LLMClient:
     def __init__(self, backend: str | None = None, model: str | None = None,
-                 temperature: float = 0.2, max_tokens: int = 2000):
+                 temperature: float = 0.2, max_tokens: int = 2000,
+                 timeout: float | None = None):
         # Default: use Claude automatically if a key is present, otherwise mock (zero-config).
         if backend is None:
             backend = os.environ.get("QM_BACKEND")
@@ -37,15 +38,19 @@ class LLMClient:
         self.model = model or os.environ.get("QM_MODEL", DEFAULT_MODELS[self.backend])
         self.temperature = temperature
         self.max_tokens = max_tokens
+        # Without an explicit timeout, a request that drops mid-flight (e.g. a network
+        # blip) can hang the SDK indefinitely instead of raising -- see incident where
+        # a run sat idle for 2+ hours after a connection drop.
+        self.timeout = timeout or float(os.environ.get("QM_TIMEOUT", "120"))
         self._init_backend()
 
     def _init_backend(self):
         if self.backend == "anthropic":
             import anthropic
-            self._client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
+            self._client = anthropic.Anthropic(timeout=self.timeout)  # reads ANTHROPIC_API_KEY
         elif self.backend == "openai":
             from openai import OpenAI
-            self._client = OpenAI()  # reads OPENAI_API_KEY
+            self._client = OpenAI(timeout=self.timeout)  # reads OPENAI_API_KEY
         elif self.backend == "mock":
             from .mock_brain import MockBrain
             self._client = MockBrain()
