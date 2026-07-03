@@ -10,13 +10,23 @@ not as evidence of discovery ability.
 """
 
 from __future__ import annotations
+import json
+import os
 from .algorithms import ALGORITHMS
 from .orchestrator import analyze_algorithm
 from .llm_client import LLMClient
 
+OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
+EVAL_DETAILS_DIR = os.path.join(OUT_DIR, "eval_details")
+
+
+def _slug(name: str) -> str:
+    return "".join(c if c.isalnum() else "_" for c in name)[:40]
+
 
 def evaluate(client: LLMClient | None = None) -> dict:
     client = client or LLMClient()
+    os.makedirs(EVAL_DETAILS_DIR, exist_ok=True)
     results, correct = [], 0
     for algo in ALGORITHMS:
         out = analyze_algorithm(algo, client, verbose=False)
@@ -24,6 +34,13 @@ def evaluate(client: LLMClient | None = None) -> dict:
         want = algo["known_label"]["primitive"].lower()
         ok = got == want
         correct += ok
+
+        # Full Agent 1-4 output (structure/matching/scheme/review) so a failed case
+        # can be replayed after the fact -- evaluate() previously discarded this.
+        detail_path = os.path.join(EVAL_DETAILS_DIR, f"{_slug(algo['name'])}.json")
+        with open(detail_path, "w") as f:
+            json.dump(out, f, indent=2)
+
         results.append({
             "algorithm": algo["name"],
             "expected": want,
@@ -33,6 +50,7 @@ def evaluate(client: LLMClient | None = None) -> dict:
             "scheme_speedup": out["scheme"].get("speedup_estimate"),
             "review_verdict": out["review"].get("verdict"),
             "rounds_used": out["rounds_used"],
+            "detail_file": os.path.relpath(detail_path, OUT_DIR),
         })
 
     hard = [r for r in results if r["is_hard_negative"]]
@@ -48,5 +66,4 @@ def evaluate(client: LLMClient | None = None) -> dict:
 
 
 if __name__ == "__main__":
-    import json
     print(json.dumps(evaluate(), indent=2))
