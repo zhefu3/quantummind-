@@ -44,6 +44,20 @@ retry/resume to the runners; see the git history.)
   to a positive "discovery" output and the natural candidates for Layer-3 expert
   review.
 
+> **How to state the MCTS verdict honestly.** The flat `recommendation` field reads
+> `amplitude_estimation`, but the underlying claim (identical in both runs) is
+> narrower: a **hybrid architecture** -- classical MCTS outer loop with a quantum
+> amplitude-estimation rollout oracle -- whose quadratic speedup applies **only to
+> the rollout sub-step** (O(1/ε) vs O(1/ε²) per node), with the iteration count
+> unchanged, net gain proportional to the rollout share of runtime, and an explicit
+> statement that "claims of an asymptotic speedup for the full MCTS algorithm are
+> not supported" (the UCB selection loop is a hard sequential barrier; the reasoning
+> cites Montanaro 2015 and calls the scheme a known proposal, not a novel result).
+> Any report of this result must carry that scoping -- "MCTS → amplitude_estimation"
+> alone overstates what the system actually claimed. The single-primitive-id
+> `recommendation` schema cannot express "partial / sub-step only"; a schema change
+> is a possible follow-up.
+
 ## Observations
 
 ### 1. Confidence is *lower* on the "has speedup" verdicts -- reasonable conservatism
