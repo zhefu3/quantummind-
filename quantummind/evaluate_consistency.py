@@ -39,7 +39,11 @@ def evaluate_consistency(client: LLMClient | None = None, k: int = 3) -> dict:
     client = client or LLMClient()
     os.makedirs(DETAILS_DIR, exist_ok=True)
 
-    results = []
+    # "unknown"-labelled questions are open-ended exploration cases with no ground
+    # truth -- the system can never literally answer "unknown", so scoring them as
+    # wrong would only pollute the accuracy. Report their answers and stability
+    # separately, unscored (same split as evaluate.py).
+    labeled_results, exploratory_results = [], []
     for algo in ALGORITHMS:
         want = algo["known_label"]["primitive"].lower()
         algo_dir = os.path.join(DETAILS_DIR, _slug(algo["name"]))
@@ -59,9 +63,8 @@ def evaluate_consistency(client: LLMClient | None = None, k: int = 3) -> dict:
         majority_answer, majority_count = vote_counts.most_common(1)[0]
         confidence_counts = Counter(confidences)
 
-        results.append({
+        entry = {
             "algorithm": algo["name"],
-            "expected": want,
             "k": k,
             "runs": gots,
             "votes": _format_votes(vote_counts, k),
@@ -69,21 +72,31 @@ def evaluate_consistency(client: LLMClient | None = None, k: int = 3) -> dict:
             "majority_count": majority_count,
             "consistency_ratio": round(majority_count / k, 3),
             "fully_consistent": majority_count == k,
-            "correct": majority_answer == want,
-            "is_hard_negative": "HARD NEGATIVE" in algo["known_label"]["note"],
             "confidence_distribution": _format_confidence(confidence_counts),
-        })
+        }
+        if want == "unknown":
+            exploratory_results.append(entry)
+        else:
+            entry.update({
+                "expected": want,
+                "correct": majority_answer == want,
+                "is_hard_negative": "HARD NEGATIVE" in algo["known_label"]["note"],
+            })
+            labeled_results.append(entry)
 
-    n = len(results)
-    majority_vote_accuracy = round(sum(r["correct"] for r in results) / n, 3)
-    fully_consistent_fraction = round(sum(r["fully_consistent"] for r in results) / n, 3)
-
+    all_results = labeled_results + exploratory_results
     summary = {
         "k": k,
-        "n": n,
-        "majority_vote_accuracy": majority_vote_accuracy,
-        "fully_consistent_fraction": fully_consistent_fraction,
-        "results": results,
+        "n_labeled": len(labeled_results),
+        "n_exploratory": len(exploratory_results),
+        "labeled_majority_vote_accuracy": (
+            round(sum(r["correct"] for r in labeled_results) / len(labeled_results), 3)
+            if labeled_results else None),
+        "fully_consistent_fraction": (
+            round(sum(r["fully_consistent"] for r in all_results) / len(all_results), 3)
+            if all_results else None),
+        "labeled_results": labeled_results,
+        "exploratory_results": exploratory_results,
         "backend": client.backend,
         "model": client.model,
     }
@@ -97,13 +110,26 @@ def evaluate_consistency(client: LLMClient | None = None, k: int = 3) -> dict:
 def _print_table(summary: dict) -> None:
     k = summary["k"]
     print(f"\nConsistency evaluation (K={k}, backend: {summary['backend']} / {summary['model']})\n")
-    print(f"{'algorithm':<52}{'majority':<23}{'consistency':<13}{'correct':<9}{'confidence dist'}")
-    for r in summary["results"]:
+    header = f"{'algorithm':<52}{'majority':<23}{'consistency':<13}{'correct':<9}{'confidence dist'}"
+
+    print("LABELED (scored by majority vote)")
+    print(header)
+    for r in summary["labeled_results"]:
         print(f"{r['algorithm'][:50]:<52}{r['majority_answer']:<23}"
               f"{str(r['majority_count']) + '/' + str(k):<13}"
               f"{'yes' if r['correct'] else 'no':<9}{r['confidence_distribution']}")
-    print(f"\nMajority-vote accuracy: {summary['majority_vote_accuracy']}")
-    print(f"Fully consistent (K/K same answer): {summary['fully_consistent_fraction']}")
+
+    print("\nEXPLORATORY (no ground truth -- not scored)")
+    print(f"{'algorithm':<52}{'majority':<23}{'consistency':<13}{'':<9}{'confidence dist'}")
+    for r in summary["exploratory_results"]:
+        print(f"{r['algorithm'][:50]:<52}{r['majority_answer']:<23}"
+              f"{str(r['majority_count']) + '/' + str(k):<13}"
+              f"{'':<9}{r['confidence_distribution']}")
+
+    print(f"\nLabeled majority-vote accuracy: {summary['labeled_majority_vote_accuracy']} "
+          f"(n={summary['n_labeled']})")
+    print(f"Fully consistent (K/K same answer, all questions): "
+          f"{summary['fully_consistent_fraction']}")
 
 
 def main():

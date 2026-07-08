@@ -28,6 +28,19 @@ def _role(system: str) -> str:
 
 def _signal(user: str) -> str:
     u = user.lower()
+    # Specific phrases first: several exploration questions contain broad keywords
+    # ("graph", "shortest path", "monte carlo") that would otherwise collide with
+    # the older signals below. These signals have no table entries, so they fall
+    # through to the "generic" responses -- the point is only to keep them from
+    # getting a thematically wrong canned answer.
+    if "isomorphic" in u or "isomorphism" in u:
+        return "graph_iso"
+    if "nearest neighbor" in u:
+        return "nearest_neighbor"
+    if "tree search" in u:
+        return "tree_search"
+    if "single target" in u or "one target" in u:
+        return "sssp_single"
     if "sorting" in u or "merge sort" in u or "comparison-based sort" in u:
         return "sorting"
     if "linear system" in u or "ax=b" in u or "ax = b" in u or "solution vector" in u:

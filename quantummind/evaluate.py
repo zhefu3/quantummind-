@@ -27,13 +27,15 @@ def _slug(name: str) -> str:
 def evaluate(client: LLMClient | None = None) -> dict:
     client = client or LLMClient()
     os.makedirs(EVAL_DETAILS_DIR, exist_ok=True)
-    results, correct = [], 0
+    # Questions labelled "unknown" have no fixed ground truth (they are open-ended
+    # exploration cases) -- the system can never literally answer "unknown", so
+    # scoring them as wrong would only pollute the accuracy. Score the labelled
+    # set; report the exploratory set separately without a correct/incorrect call.
+    labeled_results, exploratory_results, correct = [], [], 0
     for algo in ALGORITHMS:
         out = analyze_algorithm(algo, client, verbose=False)
         got = (out["matching"].get("recommendation") or "none").lower()
         want = algo["known_label"]["primitive"].lower()
-        ok = got == want
-        correct += ok
 
         # Full Agent 1-4 output (structure/matching/scheme/review) so a failed case
         # can be replayed after the fact -- evaluate() previously discarded this.
@@ -41,24 +43,35 @@ def evaluate(client: LLMClient | None = None) -> dict:
         with open(detail_path, "w") as f:
             json.dump(out, f, indent=2)
 
-        results.append({
+        entry = {
             "algorithm": algo["name"],
-            "expected": want,
             "got": got,
-            "correct": ok,
-            "is_hard_negative": "HARD NEGATIVE" in algo["known_label"]["note"],
             "scheme_speedup": out["scheme"].get("speedup_estimate"),
             "review_verdict": out["review"].get("verdict"),
             "rounds_used": out["rounds_used"],
             "detail_file": os.path.relpath(detail_path, OUT_DIR),
-        })
+        }
+        if want == "unknown":
+            entry["confidence"] = out["matching"].get("overall_confidence")
+            exploratory_results.append(entry)
+        else:
+            ok = got == want
+            correct += ok
+            entry.update({
+                "expected": want,
+                "correct": ok,
+                "is_hard_negative": "HARD NEGATIVE" in algo["known_label"]["note"],
+            })
+            labeled_results.append(entry)
 
-    hard = [r for r in results if r["is_hard_negative"]]
+    hard = [r for r in labeled_results if r["is_hard_negative"]]
     summary = {
-        "n": len(results),
-        "accuracy": round(correct / len(results), 3),
+        "n_labeled": len(labeled_results),
+        "n_exploratory": len(exploratory_results),
+        "labeled_accuracy": round(correct / len(labeled_results), 3) if labeled_results else None,
         "hard_negative_handled": all(r["correct"] for r in hard) if hard else None,
-        "results": results,
+        "labeled_results": labeled_results,
+        "exploratory_results": exploratory_results,
         "backend": client.backend,
         "model": client.model,
     }
