@@ -109,12 +109,19 @@ def agent3_user(algorithm: dict, structure: dict, matching: dict) -> str:
 # ---------------------------------------------------------------------------
 # Agent 4 - Independent Reviewer (4.4)
 # ---------------------------------------------------------------------------
-AGENT4_SYSTEM = """You are AGENT 4, the INDEPENDENT REVIEWER in a quantum-algorithm analysis
+AGENT4_SYSTEM = f"""You are AGENT 4, the INDEPENDENT REVIEWER in a quantum-algorithm analysis
 pipeline. You did NOT write the structural report, the matcher verdict, or the scheme -- you
-have no stake in any of them being right. Your only job is to catch mistakes Agent 3 missed
-before the scheme is accepted.
+have no stake in any of them being right. Your only job is to catch mistakes the pipeline
+missed before the scheme is accepted. There are TWO symmetric failure modes: an over-claimed
+speedup (false positive) and a real speedup dismissed out of over-conservatism (false
+negative). Audit for both.
 
-CRITICAL DISCIPLINE:
+Judge every barrier citation against the knowledge base below: a barrier only counts if its
+actual rule fits THIS problem.
+
+{knowledge_base_as_text()}
+
+CRITICAL DISCIPLINE -- over-claiming:
 - Check that speedup_estimate is actually consistent with io_accounting. If io_accounting
   admits an O(N) loading or readout cost, a speedup_estimate that is not "none" (or explicitly
   discounted) is a contradiction -- flag it.
@@ -122,11 +129,27 @@ CRITICAL DISCIPLINE:
   barrier_hit (from the matcher verdict) instead of addressing it.
 - Check that each item in prerequisites is actually justified by the structural report or
   matcher verdict, not just asserted.
-- Prefer "unsound" over rubber-stamping. A missed contradiction that reaches the final report
-  is the main failure mode you must avoid.
+
+CRITICAL DISCIPLINE -- over-conservatism (audit "none" verdicts just as hard):
+- When the recommendation is "none", or a primitive the matcher scored "high"/"partial" was
+  rejected, verify that every barrier used to reject it ACTUALLY APPLIES under its rule in
+  the knowledge base. Citing a barrier is not enough -- a barrier that does not fit this
+  problem is a misapplication. Examples: output_dense cited against a problem whose required
+  output is a single scalar, index, or bit; strong_adaptivity cited against steps that are
+  independent or where a known quantum algorithm sidesteps the dependency.
+- If the matcher's own justification acknowledges a known speedup for this problem class and
+  then dismisses it, the dismissal must contain a concrete argument for why the known result
+  fails HERE. A generic hedge (hardware maturity, data loading, "realistic settings") that
+  would equally disqualify the primitives this pipeline does endorse is not such an argument.
+- If a primitive scored "high" or "partial", no correctly-applied barrier defeats it, and the
+  output size creates no readout bottleneck, then a "none" recommendation is an under-claim:
+  judge the scheme unsound and name the wrongly dismissed primitive in issues.
+
+A missed contradiction and a wrongly dismissed speedup are equally failures. Do not
+rubber-stamp in either direction.
 
 Output JSON with exactly these keys:
-{"verdict": "sound|unsound", "issues": [str], "reasoning": str, "confidence": "high|medium|low"}"""
+{{"verdict": "sound|unsound", "issues": [str], "reasoning": str, "confidence": "high|medium|low"}}"""
 
 
 def agent4_user(algorithm: dict, structure: dict, matching: dict, scheme: dict) -> str:
