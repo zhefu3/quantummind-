@@ -7,16 +7,22 @@ isn't reliable -- one run said "none", eight independent re-runs all said
 "quantum_walk". A one-shot evaluate() can silently report a fluke as ground
 truth. This module runs each algorithm K independent times and scores by
 MAJORITY VOTE instead, and reports how often the K runs actually agree.
+
+Runs are resumable: each run's full output is written to disk as it
+completes, and existing run_<i>.json files are reused instead of re-spending
+API calls. Re-running the same command after a crash continues from where it
+stopped; pass --fresh to force a complete re-run.
 """
 
 from __future__ import annotations
 import argparse
 import json
 import os
+import time
 from collections import Counter
 
 from .algorithms import ALGORITHMS
-from .orchestrator import analyze_algorithm
+from .consistency_check import run_pipeline_once
 from .llm_client import LLMClient
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
@@ -35,7 +41,8 @@ def _format_confidence(counts: Counter) -> str:
     return ", ".join(f"{c}×{n}" for c, n in counts.most_common())
 
 
-def evaluate_consistency(client: LLMClient | None = None, k: int = 3) -> dict:
+def evaluate_consistency(client: LLMClient | None = None, k: int = 3,
+                          fresh: bool = False) -> dict:
     client = client or LLMClient()
     os.makedirs(DETAILS_DIR, exist_ok=True)
 
@@ -44,65 +51,81 @@ def evaluate_consistency(client: LLMClient | None = None, k: int = 3) -> dict:
     # wrong would only pollute the accuracy. Report their answers and stability
     # separately, unscored (same split as evaluate.py).
     labeled_results, exploratory_results = [], []
-    for algo in ALGORITHMS:
-        want = algo["known_label"]["primitive"].lower()
-        algo_dir = os.path.join(DETAILS_DIR, _slug(algo["name"]))
-        os.makedirs(algo_dir, exist_ok=True)
+    total = len(ALGORITHMS)
+    t0 = time.time()
+    try:
+        for idx, algo in enumerate(ALGORITHMS, 1):
+            want = algo["known_label"]["primitive"].lower()
+            algo_dir = os.path.join(DETAILS_DIR, _slug(algo["name"]))
+            os.makedirs(algo_dir, exist_ok=True)
 
-        gots, confidences = [], []
-        for i in range(1, k + 1):
-            out = analyze_algorithm(algo, client, verbose=False)
-            got = (out["matching"].get("recommendation") or "none").lower()
-            gots.append(got)
-            confidences.append(out["matching"].get("overall_confidence"))
-            with open(os.path.join(algo_dir, f"run_{i}.json"), "w") as f:
-                json.dump(out, f, indent=2)
+            gots, confidences, failed = [], [], 0
+            for i in range(1, k + 1):
+                out_path = os.path.join(algo_dir, f"run_{i}.json")
+                out, err, cached = run_pipeline_once(algo, client, out_path, fresh=fresh)
+                elapsed_min = (time.time() - t0) / 60
+                if err is not None:
+                    failed += 1
+                    print(f"[{idx}/{total}] {algo['name'][:45]}: run {i}/{k} "
+                          f"FAILED -- {err} ({elapsed_min:.1f} min elapsed)")
+                    continue
+                got = (out["matching"].get("recommendation") or "none").lower()
+                gots.append(got)
+                confidences.append(out["matching"].get("overall_confidence"))
+                print(f"[{idx}/{total}] {algo['name'][:45]}: run {i}/{k} got={got} "
+                      f"({elapsed_min:.1f} min elapsed{', cached' if cached else ''})")
 
-        vote_counts = Counter(gots)
-        # ties keep first-occurrence order (Counter.most_common is a stable sort)
-        majority_answer, majority_count = vote_counts.most_common(1)[0]
-        confidence_counts = Counter(confidences)
+            if gots:
+                vote_counts = Counter(gots)
+                # ties keep first-occurrence order (Counter.most_common is stable)
+                majority_answer, majority_count = vote_counts.most_common(1)[0]
+            else:
+                vote_counts, majority_answer, majority_count = Counter(), None, 0
 
-        entry = {
-            "algorithm": algo["name"],
+            entry = {
+                "algorithm": algo["name"],
+                "k": k,
+                "completed_runs": len(gots),
+                "failed_runs": failed,
+                "runs": gots,
+                "votes": _format_votes(vote_counts, k),
+                "majority_answer": majority_answer,
+                "majority_count": majority_count,
+                "consistency_ratio": (round(majority_count / len(gots), 3)
+                                       if gots else None),
+                # only claim full consistency when every run completed AND agreed
+                "fully_consistent": len(gots) == k and majority_count == k,
+                "confidence_distribution": _format_confidence(Counter(confidences)),
+            }
+            if want == "unknown":
+                exploratory_results.append(entry)
+            else:
+                entry.update({
+                    "expected": want,
+                    "correct": majority_answer == want,
+                    "is_hard_negative": "HARD NEGATIVE" in algo["known_label"]["note"],
+                })
+                labeled_results.append(entry)
+    finally:
+        # Always write the summary, even on interrupt -- partial data beats none.
+        all_results = labeled_results + exploratory_results
+        summary = {
             "k": k,
-            "runs": gots,
-            "votes": _format_votes(vote_counts, k),
-            "majority_answer": majority_answer,
-            "majority_count": majority_count,
-            "consistency_ratio": round(majority_count / k, 3),
-            "fully_consistent": majority_count == k,
-            "confidence_distribution": _format_confidence(confidence_counts),
+            "n_labeled": len(labeled_results),
+            "n_exploratory": len(exploratory_results),
+            "labeled_majority_vote_accuracy": (
+                round(sum(r["correct"] for r in labeled_results) / len(labeled_results), 3)
+                if labeled_results else None),
+            "fully_consistent_fraction": (
+                round(sum(r["fully_consistent"] for r in all_results) / len(all_results), 3)
+                if all_results else None),
+            "labeled_results": labeled_results,
+            "exploratory_results": exploratory_results,
+            "backend": client.backend,
+            "model": client.model,
         }
-        if want == "unknown":
-            exploratory_results.append(entry)
-        else:
-            entry.update({
-                "expected": want,
-                "correct": majority_answer == want,
-                "is_hard_negative": "HARD NEGATIVE" in algo["known_label"]["note"],
-            })
-            labeled_results.append(entry)
-
-    all_results = labeled_results + exploratory_results
-    summary = {
-        "k": k,
-        "n_labeled": len(labeled_results),
-        "n_exploratory": len(exploratory_results),
-        "labeled_majority_vote_accuracy": (
-            round(sum(r["correct"] for r in labeled_results) / len(labeled_results), 3)
-            if labeled_results else None),
-        "fully_consistent_fraction": (
-            round(sum(r["fully_consistent"] for r in all_results) / len(all_results), 3)
-            if all_results else None),
-        "labeled_results": labeled_results,
-        "exploratory_results": exploratory_results,
-        "backend": client.backend,
-        "model": client.model,
-    }
-
-    with open(os.path.join(OUT_DIR, "consistency_evaluation.json"), "w") as f:
-        json.dump(summary, f, indent=2)
+        with open(os.path.join(OUT_DIR, "consistency_evaluation.json"), "w") as f:
+            json.dump(summary, f, indent=2)
 
     return summary
 
@@ -110,19 +133,18 @@ def evaluate_consistency(client: LLMClient | None = None, k: int = 3) -> dict:
 def _print_table(summary: dict) -> None:
     k = summary["k"]
     print(f"\nConsistency evaluation (K={k}, backend: {summary['backend']} / {summary['model']})\n")
-    header = f"{'algorithm':<52}{'majority':<23}{'consistency':<13}{'correct':<9}{'confidence dist'}"
 
     print("LABELED (scored by majority vote)")
-    print(header)
+    print(f"{'algorithm':<52}{'majority':<23}{'consistency':<13}{'correct':<9}{'confidence dist'}")
     for r in summary["labeled_results"]:
-        print(f"{r['algorithm'][:50]:<52}{r['majority_answer']:<23}"
+        print(f"{r['algorithm'][:50]:<52}{(r['majority_answer'] or '—'):<23}"
               f"{str(r['majority_count']) + '/' + str(k):<13}"
               f"{'yes' if r['correct'] else 'no':<9}{r['confidence_distribution']}")
 
     print("\nEXPLORATORY (no ground truth -- not scored)")
     print(f"{'algorithm':<52}{'majority':<23}{'consistency':<13}{'':<9}{'confidence dist'}")
     for r in summary["exploratory_results"]:
-        print(f"{r['algorithm'][:50]:<52}{r['majority_answer']:<23}"
+        print(f"{r['algorithm'][:50]:<52}{(r['majority_answer'] or '—'):<23}"
               f"{str(r['majority_count']) + '/' + str(k):<13}"
               f"{'':<9}{r['confidence_distribution']}")
 
@@ -130,16 +152,23 @@ def _print_table(summary: dict) -> None:
           f"(n={summary['n_labeled']})")
     print(f"Fully consistent (K/K same answer, all questions): "
           f"{summary['fully_consistent_fraction']}")
+    n_failed = sum(r["failed_runs"] for r in
+                   summary["labeled_results"] + summary["exploratory_results"])
+    if n_failed:
+        print(f"WARNING: {n_failed} run(s) failed after retries -- see FAILED lines above; "
+              f"re-run the same command to fill them in (completed runs are cached).")
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--k", type=int, default=3, help="independent runs per algorithm")
+    ap.add_argument("--fresh", action="store_true",
+                     help="re-run everything, ignoring existing run_<i>.json files")
     args = ap.parse_args()
 
     client = LLMClient()
     print(f"Backend: {client.backend} / model: {client.model} / temperature: {client.temperature}")
-    summary = evaluate_consistency(client, k=args.k)
+    summary = evaluate_consistency(client, k=args.k, fresh=args.fresh)
     _print_table(summary)
     print(f"\nWrote {os.path.join(OUT_DIR, 'consistency_evaluation.json')}")
     print(f"Per-run reasoning saved under {DETAILS_DIR}/<algorithm>/run_<i>.json")

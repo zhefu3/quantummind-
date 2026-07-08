@@ -31,14 +31,19 @@ EXPLORATION_ALGORITHMS = [
 ]
 
 
-def run_all(n_runs: int, client: LLMClient | None = None) -> list[dict]:
+def run_all(n_runs: int, client: LLMClient | None = None,
+            fresh: bool = False) -> list[dict]:
     client = client or LLMClient()
     summaries = []
     for name in EXPLORATION_ALGORITHMS:
         print(f"=== {name} ===")
-        summaries.append(check_consistency(name, n_runs, client))
+        summaries.append(check_consistency(name, n_runs, client, fresh=fresh))
         print()
     return summaries
+
+
+def _ok_runs(s: dict) -> list[dict]:
+    return [r for r in s["runs"] if "error" not in r]
 
 
 def _print_table(summaries: list[dict]) -> None:
@@ -48,44 +53,54 @@ def _print_table(summaries: list[dict]) -> None:
           f"temperature={summaries[0]['temperature']})\n")
     print(f"{'algorithm':<52}{'runs (got)':<50}{'confidence':<25}{'review':<20}{'rounds'}")
     for s in summaries:
-        gots = ", ".join(r["got"] for r in s["runs"])
-        confs = ", ".join(r["overall_confidence"] or "?" for r in s["runs"])
-        reviews = ", ".join(r["review_verdict"] or "?" for r in s["runs"])
-        rounds = ", ".join(str(r["rounds_used"]) for r in s["runs"])
+        gots = ", ".join(r.get("got", "FAILED") for r in s["runs"])
+        confs = ", ".join(r.get("overall_confidence") or "?" for r in s["runs"])
+        reviews = ", ".join(r.get("review_verdict") or "?" for r in s["runs"])
+        rounds = ", ".join(str(r.get("rounds_used", "?")) for r in s["runs"])
         print(f"{s['algorithm'][:50]:<52}{gots:<50}{confs:<25}{reviews:<20}{rounds}")
 
-    swayed = [s for s in summaries if len(set(r["got"] for r in s["runs"])) > 1]
+    swayed = [s for s in summaries
+              if len(set(r["got"] for r in _ok_runs(s))) > 1]
     non_none_consistent = [
         s for s in summaries
-        if len(set(r["got"] for r in s["runs"])) == 1 and s["runs"][0]["got"] != "none"
+        if _ok_runs(s) and len(set(r["got"] for r in _ok_runs(s))) == 1
+        and _ok_runs(s)[0]["got"] != "none"
     ]
+    failed_total = sum(s.get("failed_runs", 0) for s in summaries)
 
     print("\n--- Runs that disagreed on speedup (SWAYED) ---")
     if swayed:
         for s in swayed:
-            print(f"  {s['algorithm']}: {[r['got'] for r in s['runs']]}")
+            print(f"  {s['algorithm']}: {[r['got'] for r in _ok_runs(s)]}")
     else:
         print("  (none)")
 
     print("\n--- Runs that agreed on a NON-none answer every time ('has speedup') ---")
     if non_none_consistent:
         for s in non_none_consistent:
-            print(f"  {s['algorithm']}: {s['runs'][0]['got']} "
-                  f"({n}/{n} runs, confidence: "
-                  f"{', '.join(r['overall_confidence'] or '?' for r in s['runs'])})")
+            ok = _ok_runs(s)
+            print(f"  {s['algorithm']}: {ok[0]['got']} "
+                  f"({len(ok)}/{n} runs, confidence: "
+                  f"{', '.join(r['overall_confidence'] or '?' for r in ok)})")
     else:
         print("  (none)")
+
+    if failed_total:
+        print(f"\nWARNING: {failed_total} run(s) failed after retries -- re-run the "
+              f"same command to fill them in (completed runs are cached).")
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=2, help="independent runs per algorithm")
+    ap.add_argument("--fresh", action="store_true",
+                     help="re-run everything, ignoring existing run_<i>.json files")
     args = ap.parse_args()
 
     client = LLMClient()
     print(f"Backend: {client.backend} / model: {client.model} / "
           f"temperature: {client.temperature}\n")
-    summaries = run_all(args.n, client)
+    summaries = run_all(args.n, client, fresh=args.fresh)
     _print_table(summaries)
 
     with open(os.path.join(OUT_DIR, "exploration_consistency_summary.json"), "w") as f:
