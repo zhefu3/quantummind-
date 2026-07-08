@@ -3,8 +3,14 @@ CLI entry point.
 
 Examples:
   python -m quantummind.run --all                 # run pipeline on the whole test set
-  python -m quantummind.run --eval                # run Layer-1 evaluation
+  python -m quantummind.run --eval                # run Layer-1 evaluation (single sample)
+  python -m quantummind.run --eval --k 3          # evaluation by majority vote over 3 runs
   python -m quantummind.run --algo 3              # run one algorithm by index
+
+A single sample per question is not always reliable (see
+docs/consistency_experiment.md) -- for a real-model evaluation, prefer --k 2
+or higher; answers are then scored by majority vote and per-question
+agreement is reported alongside.
 
 Backend/model via env:  QM_BACKEND=anthropic QM_MODEL=claude-sonnet-4-6 python -m quantummind.run --all
 Default backend is "mock" (no API key needed).
@@ -65,6 +71,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--all", action="store_true", help="run pipeline on the whole test set")
     ap.add_argument("--eval", action="store_true", help="run Layer-1 evaluation")
+    ap.add_argument("--k", type=int, default=1,
+                    help="with --eval: independent runs per question, scored by "
+                         "majority vote (default 1 = classic single-sample eval)")
     ap.add_argument("--algo", type=int, help="run one algorithm by index (0-based)")
     args = ap.parse_args()
 
@@ -73,6 +82,12 @@ def main():
     print(f"Backend: {client.backend} / model: {client.model}\n")
 
     if args.eval:
+        if args.k > 1:
+            from .evaluate_consistency import evaluate_consistency, _print_table
+            summary = evaluate_consistency(client, k=args.k)
+            _print_table(summary)
+            print(f"\nWrote {os.path.join(OUT_DIR, 'consistency_evaluation.json')}")
+            return
         summary = evaluate(client)
         path = os.path.join(OUT_DIR, "evaluation.json")
         with open(path, "w") as f:
