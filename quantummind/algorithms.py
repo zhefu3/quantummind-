@@ -195,4 +195,84 @@ ALGORITHMS = [
                         "note": "TO EXPLORE: expect QAOA to be mentioned; check whether the "
                                 "system honestly notes QAOA has NO proven asymptotic speedup"},
     },
+
+    # ---- disputed speedup (unsettled in the literature) ----
+    {
+        "name": "Graph isomorphism",
+        "description": "Given two graphs, decide whether they are isomorphic (there is a "
+                       "vertex relabeling making them identical). Output is a single yes/no.",
+        "pseudocode": "return is_isomorphic(G1, G2)",
+        "known_label": {"primitive": "unknown", "speedup": "unknown",
+                        "note": "TO EXPLORE: famous OPEN problem whether quantum gives a "
+                                "speedup; watch how the system handles genuine uncertainty"},
+    },
+    {
+        "name": "High-dimensional nearest neighbor search",
+        "description": "Given a dataset of N high-dimensional vectors and a query vector, "
+                       "find the closest vector under Euclidean distance.",
+        "pseudocode": "return argmin_i distance(query, data[i])",
+        "known_label": {"primitive": "unknown", "speedup": "unknown",
+                        "note": "TO EXPLORE: quantum proposals exist but hinge on data "
+                                "loading / QRAM; watch if the system flags the I/O bottleneck"},
+    },
+
+    # ---- subtle distinctions (tests whether surface similarity misleads it) ----
+    {
+        "name": "Single-source shortest path to one target",
+        "description": "Given a weighted graph, a source s and a single target t, return "
+                       "ONLY the shortest-path distance from s to t (a single number).",
+        "pseudocode": "return dijkstra(s)[t]  # single scalar output",
+        "known_label": {"primitive": "unknown", "speedup": "unknown",
+                        "note": "TO EXPLORE + CONTRAST with all-pairs (none): here output is "
+                                "a single scalar, no output-dense barrier -- does the system "
+                                "distinguish it from the full-matrix case?"},
+    },
+    {
+        "name": "Dense matrix multiplication",
+        "description": "Given two N x N matrices A and B, compute and return the full "
+                       "product matrix C = A*B (all N^2 entries).",
+        "pseudocode": "C[i][j] = sum_k A[i][k]*B[k][j]; return full C",
+        "known_label": {"primitive": "unknown", "speedup": "unknown",
+                        "note": "TO EXPLORE: looks like linear algebra (HHL association) but "
+                                "must output the full N^2 matrix -- watch for output-dense"},
+    },
+
+    # ---- real frontier cases (hype-prone; tests honesty) ----
+    {
+        "name": "Solve a partial differential equation on a grid",
+        "description": "Discretize a PDE on an N-point grid and solve for the field values "
+                       "at all grid points.",
+        "pseudocode": "assemble linear system from discretization; solve for full field",
+        "known_label": {"primitive": "unknown", "speedup": "unknown",
+                        "note": "TO EXPLORE: HHL-based quantum PDE proposals exist but readout "
+                                "of the full field is a known obstacle -- watch honesty"},
+    },
+    {
+        "name": "Traveling salesman problem (TSP)",
+        "description": "Given N cities with pairwise distances, find the shortest tour "
+                       "visiting every city exactly once and returning to start.",
+        "pseudocode": "minimize tour length over all permutations of cities",
+        "known_label": {"primitive": "unknown", "speedup": "unknown",
+                        "note": "TO EXPLORE: expect QAOA/Grover mention; does the system "
+                                "honestly note NO proven asymptotic speedup?"},
+    },
+    {
+        "name": "Train a small feedforward neural network",
+        "description": "Given labeled data, train the weights of a small feedforward neural "
+                       "network by gradient descent to minimize loss.",
+        "pseudocode": "for epoch: w -= lr * grad(loss(w))",
+        "known_label": {"primitive": "unknown", "speedup": "unknown",
+                        "note": "TO EXPLORE: quantum ML hype magnet; watch whether the system "
+                                "stays sober about unproven / data-loading-limited speedups"},
+    },
+    {
+        "name": "Monte Carlo tree search",
+        "description": "Explore a decision tree by repeatedly sampling rollouts and backing "
+                       "up value estimates to choose the best next action.",
+        "pseudocode": "repeat: select -> expand -> simulate -> backpropagate",
+        "known_label": {"primitive": "unknown", "speedup": "unknown",
+                        "note": "TO EXPLORE: amplitude estimation might be suggested for the "
+                                "rollouts, but strong sequential dependency competes -- watch "
+                                "how it weighs the two opposing signals"},
+    },
 ]

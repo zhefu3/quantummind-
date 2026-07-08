@@ -1,5 +1,5 @@
 __pycache__/
 *.pyc
 outputs/
-.claude/settings.local.json
+.claude/
 .DS_Store
