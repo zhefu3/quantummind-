@@ -63,7 +63,10 @@ def estimate(n: int) -> None:
     print(f"Projected cost:        ~${usd:.2f}  (Sonnet, ${EST_USD_PER_M_INPUT}/M in, "
           f"${EST_USD_PER_M_OUTPUT}/M out)")
     print(f"Projected wall clock:  ~{n * EST_MINUTES_PER_CANDIDATE / 60:.1f} h sequential")
-    print("\nAssumptions are coded at the top of screen.py; recalibrate them against a "
+    print("\nNote: the ~$ figure is an UPPER bound -- it ignores prompt caching. The "
+          "knowledge-base system prompt (~1.6k tokens) is cached, so its reuse across "
+          "Agent 2 / Agent 4 / self-critique calls bills at ~0.1x after the first write.")
+    print("Assumptions are coded at the top of screen.py; recalibrate them against a "
           "--limit 5 pilot before trusting the full-pool figure.")
 
 

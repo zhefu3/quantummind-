@@ -38,6 +38,10 @@ class LLMClient:
         self.model = model or os.environ.get("QM_MODEL", DEFAULT_MODELS[self.backend])
         self.temperature = temperature
         self.max_tokens = max_tokens
+        # Prompt-cache accounting (anthropic backend), summed across all calls.
+        self.cache_read_tokens = 0
+        self.cache_write_tokens = 0
+        self.uncached_input_tokens = 0
         # Without an explicit timeout, a request that drops mid-flight (e.g. a network
         # blip) can hang the SDK indefinitely instead of raising -- see incident where
         # a run sat idle for 2+ hours after a connection drop.
@@ -59,13 +63,25 @@ class LLMClient:
 
     def complete(self, system: str, user: str) -> str:
         if self.backend == "anthropic":
+            # Cache the system prompt. It carries the full knowledge base and is
+            # byte-identical across every candidate for a given agent role, so after
+            # the first write each reuse bills the KB tokens at ~0.1x instead of full
+            # price (5-minute ephemeral TTL, refreshed on every read; the agent roles
+            # recur well within that window during a batch). The per-candidate user
+            # message stays uncached -- it is the volatile suffix. Prompts below the
+            # model's minimum cacheable prefix simply don't cache, no error.
             resp = self._client.messages.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
-                system=system,
+                system=[{"type": "text", "text": system,
+                         "cache_control": {"type": "ephemeral"}}],
                 messages=[{"role": "user", "content": user}],
             )
+            u = resp.usage
+            self.cache_read_tokens += getattr(u, "cache_read_input_tokens", 0) or 0
+            self.cache_write_tokens += getattr(u, "cache_creation_input_tokens", 0) or 0
+            self.uncached_input_tokens += getattr(u, "input_tokens", 0) or 0
             return "".join(b.text for b in resp.content if b.type == "text")
 
         if self.backend == "openai":
