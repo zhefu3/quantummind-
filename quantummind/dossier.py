@@ -80,6 +80,15 @@ def _load_json(path: str) -> dict | None:
         return json.load(f)
 
 
+def surfaced(entry: dict, stage2_entry: dict | None) -> bool:
+    """Whether a candidate reaches an expert. Stage-2 outcome is authoritative when
+    present -- CONFIRM/PROMOTE surface, DEMOTE/cut do not (a demoted advance FAILED
+    its K-vote). Without a Stage-2 entry, fall back to the Stage-1 tier."""
+    if stage2_entry is not None:
+        return stage2_entry.get("stage2_outcome") in ("PROMOTE", "CONFIRM")
+    return entry.get("tier") == "advance"
+
+
 def _load_summary(screen_dir: str) -> dict:
     path = os.path.join(screen_dir, "screening_summary.json")
     if not os.path.exists(path):
@@ -232,17 +241,8 @@ def main() -> int:
     out_dir = os.path.join(REAL_OUT_DIR, "dossiers", args.pool)
     os.makedirs(out_dir, exist_ok=True)
 
-    # Survivors an expert would look at. When Stage 2 ran on a candidate, its
-    # outcome is authoritative -- CONFIRM/PROMOTE surface, DEMOTE/cut do not (a
-    # demoted advance FAILED its K-vote and must not reach an expert). Without a
-    # Stage-2 entry, fall back to the Stage-1 tier.
-    def surfaced(e):
-        s2 = stage2.get(e["name"])
-        if s2 is not None:
-            return s2.get("stage2_outcome") in ("PROMOTE", "CONFIRM")
-        return e.get("tier") == "advance"
-
-    survivors = [e for e in entries if "error" not in e and surfaced(e)]
+    survivors = [e for e in entries
+                 if "error" not in e and surfaced(e, stage2.get(e["name"]))]
     resolved = {e["name"]: _resolve(e, screen_dir, stage2.get(e["name"]), desc.get(e["name"], ""))
                 for e in survivors}
     expert_facing = [e for e in survivors if not resolved[e["name"]]["rediscovery_risk"]]

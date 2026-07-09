@@ -194,6 +194,13 @@ def test_dossier():
     doc = dossier.build_dossier(entry, resolved, None)
     check("Expert dossier" in doc and "What to check first" in doc,
           "dossier body missing expected sections")
+    # a Stage-2 DEMOTE must not surface to an expert; a bare advance (no Stage-2) does
+    check(dossier.surfaced({"tier": "advance"}, {"stage2_outcome": "DEMOTE"}) is False,
+          "DEMOTEd advance must not surface")
+    check(dossier.surfaced({"tier": "advance"}, None) is True,
+          "bare advance (no Stage-2) should surface")
+    check(dossier.surfaced({"tier": "escalate"}, {"stage2_outcome": "PROMOTE"}) is True,
+          "promoted escalate should surface")
 
 
 # --- I. stage2 vote guard -----------------------------------------------------
