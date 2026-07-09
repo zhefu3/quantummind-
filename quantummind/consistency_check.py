@@ -21,8 +21,7 @@ import time
 from .algorithms import ALGORITHMS
 from .orchestrator import analyze_algorithm
 from .llm_client import LLMClient
-
-OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
+from .paths import outputs_root
 
 RETRY_BACKOFFS = (30, 90)  # seconds to wait before retry 1 and retry 2
 
@@ -69,7 +68,7 @@ def check_consistency(algorithm_name: str, n_runs: int,
     algo = next(a for a in ALGORITHMS if a["name"] == algorithm_name)
     want = algo["known_label"]["primitive"].lower()
 
-    out_dir = os.path.join(OUT_DIR, "consistency_" + _slug(algorithm_name))
+    out_dir = os.path.join(outputs_root(client.backend), "consistency_" + _slug(algorithm_name))
     os.makedirs(out_dir, exist_ok=True)
 
     runs = []

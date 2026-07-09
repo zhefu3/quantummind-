@@ -53,12 +53,19 @@ python -m quantummind.run --eval --k 3   # evaluation by majority vote over 3 ru
 python -m quantummind.consistency_check --algo-name "<exact name>" --n 8
 python -m quantummind.exploration_consistency --n 2
 
+# Self-critique calibration (offline, over archived runs -- no pipeline re-runs):
+python -m quantummind.self_critique --batch        # critique every archived real run
+python -m quantummind.self_critique --injection    # known-error calibration case
+
 # Force a specific backend/model:
 QM_BACKEND=anthropic QM_MODEL=claude-sonnet-4-6 python -m quantummind.run --all
 QM_BACKEND=openai    QM_MODEL=gpt-4o            python -m quantummind.run --all
 ```
 Backend selection: explicit `QM_BACKEND` wins; otherwise Claude if `ANTHROPIC_API_KEY`
-is present; otherwise mock. Outputs land in `outputs/`.
+is present; otherwise mock. Real-backend outputs land in `outputs/`; the mock backend
+writes ONLY under `outputs/mock/` (`paths.py`), so placeholder runs can never overwrite
+real experiment records -- outputs/ is not version-controlled, and two past mock runs
+destroyed real archives by sharing paths.
 
 Real backends default to a 120s per-request timeout (override with `QM_TIMEOUT=<seconds>`)
 so a dropped connection raises instead of hanging the run indefinitely. The repeated-run
@@ -115,6 +122,8 @@ Findings from real-model runs (claude-sonnet-4-6, temperature 0.2) — see
 | `evaluate_consistency.py` | Layer-1 evaluation, K samples + majority vote |
 | `consistency_check.py` | rerun one question N times (shared retry/resume helper) |
 | `exploration_consistency.py` | batch consistency runner for the 8 newest exploratory questions |
+| `self_critique.py` | post-hoc "where would I be wrong" auditor + offline calibration runner |
+| `paths.py` | output-path isolation (mock writes under `outputs/mock/` only) |
 | `llm_client.py` | model-agnostic client (mock / anthropic / openai) |
 | `mock_brain.py` | deterministic placeholder so it runs without a key |
 | `run.py` | CLI |
