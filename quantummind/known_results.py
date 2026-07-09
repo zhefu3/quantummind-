@@ -316,6 +316,35 @@ KNOWN_RESULTS = [
         "keywords": ["nearest neighbor", "1-nn", "knn", "closest point", "distance minimization"],
     },
 
+    {
+        "id": "quantum_local_search",
+        "problem": "Local search / heuristic inner loops (find an improving move, e.g. 2-opt)",
+        "primitive": "grover",
+        "speedup": "quadratic per round via Durr-Hoyer over the move neighborhood; "
+                   "round count unchanged",
+        "status": "proven",
+        "model_caveat": "per-round only; total speedup bounded by the (data-dependent) "
+                        "number of rounds; QRAM access to the instance",
+        "reference": "Durr-Hoyer 1996; Montanaro 2020 (heuristics speedups survey/applications)",
+        "keywords": ["local search", "improving move", "2-opt", "hill climbing",
+                     "neighborhood search", "best swap"],
+    },
+    {
+        "id": "quantum_dp_inner_loop",
+        "problem": "Polynomial DP recurrences with an unstructured inner search "
+                   "(e.g. split-point scans in CYK / matrix-chain style DPs)",
+        "primitive": "grover",
+        "speedup": "sub-cubic: Grover over the inner O(n) candidates gives ~sqrt "
+                   "factor on the inner loop (e.g. O(n^3) -> O(n^2.5))",
+        "status": "proven",
+        "model_caveat": "outer DP layers stay sequential; needs QRAM access to the DP "
+                        "table; related to quantum Boolean matrix multiplication via the "
+                        "parsing-BMM equivalence",
+        "reference": "Ambainis et al. 2019 (DP speedups); Le Gall (quantum BMM)",
+        "keywords": ["dynamic programming", "split point", "parsing", "cyk",
+                     "recurrence inner loop", "dp table"],
+    },
+
     # --- Strings -------------------------------------------------------------
     {
         "id": "quantum_string_matching",
