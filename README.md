@@ -137,6 +137,7 @@ Findings from real-model runs (claude-sonnet-4-6, temperature 0.2) — see
 | `screen.py` | Stage-1 screening runner: pipeline + self-critique + triage + cost estimator |
 | `stage2.py` | Stage-2 K-vote recheck of Stage-1 survivors |
 | `dossier.py` | expert-facing dossier generator (Layer 3); separates candidates from rediscoveries |
+| `regression_test.py` | free mock-only structural regression (schemas, KB/pool/known-results integrity, isolation) |
 | `paths.py` | output-path isolation (mock writes under `outputs/mock/` only) |
 | `llm_client.py` | model-agnostic client (mock / anthropic / openai) |
 | `mock_brain.py` | deterministic placeholder so it runs without a key |
