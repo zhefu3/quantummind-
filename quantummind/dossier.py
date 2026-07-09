@@ -232,10 +232,15 @@ def main() -> int:
     out_dir = os.path.join(REAL_OUT_DIR, "dossiers", args.pool)
     os.makedirs(out_dir, exist_ok=True)
 
-    # Survivors an expert would look at: advanced, or promoted/confirmed in Stage 2.
+    # Survivors an expert would look at. When Stage 2 ran on a candidate, its
+    # outcome is authoritative -- CONFIRM/PROMOTE surface, DEMOTE/cut do not (a
+    # demoted advance FAILED its K-vote and must not reach an expert). Without a
+    # Stage-2 entry, fall back to the Stage-1 tier.
     def surfaced(e):
-        s2 = stage2.get(e["name"], {})
-        return e.get("tier") == "advance" or s2.get("stage2_outcome") in ("PROMOTE", "CONFIRM")
+        s2 = stage2.get(e["name"])
+        if s2 is not None:
+            return s2.get("stage2_outcome") in ("PROMOTE", "CONFIRM")
+        return e.get("tier") == "advance"
 
     survivors = [e for e in entries if "error" not in e and surfaced(e)]
     resolved = {e["name"]: _resolve(e, screen_dir, stage2.get(e["name"]), desc.get(e["name"], ""))
