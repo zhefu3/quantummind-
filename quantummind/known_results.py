@@ -43,7 +43,9 @@ KNOWN_RESULTS = [
         "status": "proven",
         "model_caveat": "query model",
         "reference": "Durr-Hoyer 1996",
-        "keywords": ["minimum", "maximum", "min-finding", "extremum", "argmin", "argmax"],
+        "keywords": ["find the minimum", "find the maximum", "min-finding", "extremum",
+                     "argmin", "argmax", "smallest element", "largest element",
+                     "minimum in an unsorted", "minimum element"],
     },
     {
         "id": "quantum_counting",
@@ -472,8 +474,28 @@ KNOWN_RESULTS = [
 ]
 
 
+_STOPWORDS = {"the", "a", "an", "of", "in", "to", "for", "and", "or", "on", "with",
+              "is", "are", "be", "by", "as", "at", "from", "that", "this", "its", "it"}
+
+
 def _tokens(text: str) -> set[str]:
-    return set("".join(c if c.isalnum() else " " for c in text.lower()).split())
+    """Alphanumeric tokens, English stopwords removed so filler words ('the', 'of')
+    don't inflate keyword-overlap scores or break ties between real matches."""
+    raw = "".join(c if c.isalnum() else " " for c in text.lower()).split()
+    return {t for t in raw if t not in _STOPWORDS}
+
+
+# Generic single words that appear across many unrelated problems. A keyword that
+# is JUST one of these must not trigger a match on its own -- that is what made
+# "minimum" (a durr_hoyer keyword) falsely match an offline-cache problem. A
+# distinctive single word (pagerank, sat, backtracking, collision, ...) still
+# triggers, and any multi-word keyword still triggers when all its words are
+# present. Keeping this list small and truly-generic avoids suppressing real hits.
+_GENERIC_SINGLE_TOKENS = {
+    "minimum", "maximum", "optimal", "search", "problem", "compute", "find",
+    "count", "estimate", "single", "full", "matrix", "graph", "value", "list",
+    "number", "set", "pair", "size", "output", "input",
+}
 
 
 def match_known_results(text: str, top_n: int = 3) -> list[dict]:
@@ -486,7 +508,12 @@ def match_known_results(text: str, top_n: int = 3) -> list[dict]:
         score = 0
         for kw in entry["keywords"]:
             kw_toks = _tokens(kw)
-            if kw_toks and kw_toks <= toks:
+            if not kw_toks:
+                continue
+            # A lone generic word is too weak a signal to count on its own.
+            if len(kw_toks) == 1 and next(iter(kw_toks)) in _GENERIC_SINGLE_TOKENS:
+                continue
+            if kw_toks <= toks:
                 score += len(kw_toks)
         if score:
             scored.append((score, entry))

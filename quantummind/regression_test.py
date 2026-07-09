@@ -67,6 +67,15 @@ def test_known_results():
               f"known result {k['id']} names unknown primitive {k['primitive']}")
     hits = match_known_results("solve a sparse linear system, return the full solution vector")
     check(isinstance(hits, list), "match_known_results must return a list")
+    # precision/recall anchors: a lone generic word must not false-match, and
+    # distinctive matches (incl. min-finding vs spanning-tree) must resolve right.
+    top = lambda q: (match_known_results(q) or [{}])[0].get("id")
+    check(top("offline optimal cache replacement minimum number of misses") is None,
+          "generic 'minimum' must not false-match cache replacement to durr_hoyer")
+    check(top("find the minimum in an unsorted list") == "durr_hoyer_minimum",
+          "genuine min-finding must still match durr_hoyer")
+    check(top("find the minimum spanning tree of a sparse graph") == "dhhm_graph_problems",
+          "spanning-tree must beat the min-finding partial match")
 
 
 # --- C. pools -----------------------------------------------------------------
