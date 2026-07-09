@@ -62,6 +62,7 @@ python -m quantummind.screen --estimate            # projected cost, runs nothin
 python -m quantummind.screen --limit 5             # pilot batch (resumable)
 python -m quantummind.screen --pool v2 --estimate  # v2 = colder domains (v1 default)
 python -m quantummind.stage2 --pool v1 --estimate  # Stage 2 K-vote recheck of survivors
+python -m quantummind.dossier --pool v1            # expert dossiers from archives (no cost)
 
 # Force a specific backend/model:
 QM_BACKEND=anthropic QM_MODEL=claude-sonnet-4-6 python -m quantummind.run --all
@@ -135,6 +136,7 @@ Findings from real-model runs (claude-sonnet-4-6, temperature 0.2) — see
 | `pools.py` | candidate-pool registry (`--pool v1`/`v2`) |
 | `screen.py` | Stage-1 screening runner: pipeline + self-critique + triage + cost estimator |
 | `stage2.py` | Stage-2 K-vote recheck of Stage-1 survivors |
+| `dossier.py` | expert-facing dossier generator (Layer 3); separates candidates from rediscoveries |
 | `paths.py` | output-path isolation (mock writes under `outputs/mock/` only) |
 | `llm_client.py` | model-agnostic client (mock / anthropic / openai) |
 | `mock_brain.py` | deterministic placeholder so it runs without a key |
