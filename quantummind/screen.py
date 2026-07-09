@@ -35,11 +35,11 @@ import os
 import sys
 import time
 
-from .candidate_pool import CANDIDATES
 from .consistency_check import run_pipeline_once, _slug
 from .known_results import match_known_results
 from .llm_client import LLMClient
 from .paths import outputs_root
+from .pools import DEFAULT_POOL, get_pool
 from .self_critique import run_self_critique
 
 # --- cost model (rough, stated assumptions; verify against the first pilot) ----
@@ -128,25 +128,28 @@ def main() -> int:
                     help="print projected calls/cost and exit without running anything")
     ap.add_argument("--limit", type=int, default=0, help="screen only the first N candidates")
     ap.add_argument("--domain", help="screen only candidates from this domain")
+    ap.add_argument("--pool", default=DEFAULT_POOL,
+                    help="candidate pool to screen (v1 = gray zone, v2 = cold domains)")
     ap.add_argument("--fresh", action="store_true",
                     help="ignore cached results and re-run")
     args = ap.parse_args()
 
-    candidates = CANDIDATES
+    candidates = get_pool(args.pool)
     if args.domain:
         candidates = [c for c in candidates if c["domain"] == args.domain]
     if args.limit:
         candidates = candidates[:args.limit]
 
     if args.estimate:
+        print(f"Pool: {args.pool}")
         estimate(len(candidates))
         return 0
 
     client = LLMClient()
-    print(f"Backend: {client.backend} / model: {client.model}")
+    print(f"Backend: {client.backend} / model: {client.model} / pool: {args.pool}")
     if client.backend == "mock":
         print("WARNING: mock backend -- screening output is placeholder, plumbing only.")
-    screen_dir = os.path.join(outputs_root(client.backend), "screening")
+    screen_dir = os.path.join(outputs_root(client.backend), "screening", args.pool)
     os.makedirs(screen_dir, exist_ok=True)
 
     entries = []
@@ -183,7 +186,8 @@ def main() -> int:
     _print_triage([e for e in entries if "error" not in e])
     summary_path = os.path.join(screen_dir, "screening_summary.json")
     with open(summary_path, "w") as f:
-        json.dump(entries, f, indent=2)
+        json.dump({"pool": args.pool, "backend": client.backend,
+                   "model": client.model, "entries": entries}, f, indent=2)
     print(f"\nSummary written to {summary_path}")
     failed = sum(1 for e in entries if "error" in e)
     if failed:

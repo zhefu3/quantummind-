@@ -57,9 +57,11 @@ python -m quantummind.exploration_consistency --n 2
 python -m quantummind.self_critique --batch        # critique every archived real run
 python -m quantummind.self_critique --injection    # known-error calibration case
 
-# Discovery funnel, Stage 1 (gray-zone candidate pool -> triaged survivors):
+# Discovery funnel, Stage 1 (candidate pool -> triaged survivors):
 python -m quantummind.screen --estimate            # projected cost, runs nothing
 python -m quantummind.screen --limit 5             # pilot batch (resumable)
+python -m quantummind.screen --pool v2 --estimate  # v2 = colder domains (v1 default)
+python -m quantummind.stage2 --pool v1 --estimate  # Stage 2 K-vote recheck of survivors
 
 # Force a specific backend/model:
 QM_BACKEND=anthropic QM_MODEL=claude-sonnet-4-6 python -m quantummind.run --all
@@ -128,8 +130,11 @@ Findings from real-model runs (claude-sonnet-4-6, temperature 0.2) — see
 | `exploration_consistency.py` | batch consistency runner for the 8 newest exploratory questions |
 | `self_critique.py` | post-hoc "where would I be wrong" auditor + offline calibration runner |
 | `known_results.py` | known quantum-speedup results + dequantizations (novelty filter) |
-| `candidate_pool.py` | gray-zone candidate algorithms (discovery-funnel input, draft) |
+| `candidate_pool.py` | v1 gray-zone candidate algorithms (textbook-adjacent) |
+| `candidate_pool_v2.py` | v2 candidate pool: genuinely under-explored domains (cold water) |
+| `pools.py` | candidate-pool registry (`--pool v1`/`v2`) |
 | `screen.py` | Stage-1 screening runner: pipeline + self-critique + triage + cost estimator |
+| `stage2.py` | Stage-2 K-vote recheck of Stage-1 survivors |
 | `paths.py` | output-path isolation (mock writes under `outputs/mock/` only) |
 | `llm_client.py` | model-agnostic client (mock / anthropic / openai) |
 | `mock_brain.py` | deterministic placeholder so it runs without a key |

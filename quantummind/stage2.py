@@ -30,12 +30,11 @@ import sys
 import time
 from collections import Counter
 
-from .candidate_pool import CANDIDATES
 from .consistency_check import run_pipeline_once, _slug
 from .llm_client import LLMClient
 from .paths import outputs_root
-from .screen import (EST_MINUTES_PER_CANDIDATE, EST_USD_PER_M_INPUT,
-                     EST_USD_PER_M_OUTPUT)
+from .pools import DEFAULT_POOL, get_pool
+from .screen import EST_USD_PER_M_INPUT, EST_USD_PER_M_OUTPUT
 
 # A Stage-2 rerun is one pipeline pass (no self-critique), slightly cheaper than a
 # Stage-1 candidate. Recalibrated against the observed Stage-1 run (~1.6 min each).
@@ -49,7 +48,10 @@ def _stage1_tiers(screen_dir: str) -> dict[str, str]:
     if not os.path.exists(path):
         raise SystemExit(f"No Stage-1 summary at {path} -- run screen.py first.")
     with open(path) as f:
-        return {e["name"]: e.get("tier", "cut") for e in json.load(f) if "error" not in e}
+        data = json.load(f)
+    # Summary is {pool, ..., entries:[...]}; tolerate the legacy bare-list form too.
+    entries = data["entries"] if isinstance(data, dict) else data
+    return {e["name"]: e.get("tier", "cut") for e in entries if "error" not in e}
 
 
 def vote(records: list[dict]) -> tuple[str, int, int]:
@@ -68,13 +70,15 @@ def main() -> int:
     ap.add_argument("--estimate", action="store_true",
                     help="print projected cost and exit without running")
     ap.add_argument("--limit", type=int, default=0, help="recheck only the first N")
+    ap.add_argument("--pool", default=DEFAULT_POOL,
+                    help="which pool's Stage-1 results to recheck (must match screen --pool)")
     args = ap.parse_args()
 
     client = LLMClient()
-    screen_dir = os.path.join(outputs_root(client.backend), "screening")
+    screen_dir = os.path.join(outputs_root(client.backend), "screening", args.pool)
     tiers = _stage1_tiers(screen_dir)
     names = [n for n, t in tiers.items() if t in ("advance", "escalate")]
-    by_name = {c["name"]: c for c in CANDIDATES}
+    by_name = {c["name"]: c for c in get_pool(args.pool)}
     todo = [by_name[n] for n in names if n in by_name]
     if args.limit:
         todo = todo[:args.limit]
