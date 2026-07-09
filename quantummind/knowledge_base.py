@@ -22,10 +22,13 @@ PRIMITIVES = [
         "classical_problem_types": ["unstructured search", "constraint satisfaction"],
         "speedup_class": "quadratic: O(N) -> O(sqrt(N))",
         "prerequisites": [
-            "The problem must reduce to evaluating a boolean oracle f(x) in {0,1} over a search space.",
-            "The oracle must be implementable efficiently as a quantum circuit.",
-            "The speedup is only meaningful if there is NO exploitable classical structure "
-            "beyond brute-force search (otherwise a structured classical algorithm may already win).",
+            {"id": "grover.oracle_reduction",
+             "text": "The problem must reduce to evaluating a boolean oracle f(x) in {0,1} over a search space."},
+            {"id": "grover.efficient_oracle",
+             "text": "The oracle must be implementable efficiently as a quantum circuit."},
+            {"id": "grover.no_classical_structure",
+             "text": "The speedup is only meaningful if there is NO exploitable classical structure "
+                     "beyond brute-force search (otherwise a structured classical algorithm may already win)."},
         ],
     },
     {
@@ -34,9 +37,12 @@ PRIMITIVES = [
         "classical_problem_types": ["periodicity", "hidden subgroup", "number theory"],
         "speedup_class": "exponential for period-finding problems",
         "prerequisites": [
-            "The problem must have an underlying periodic or group-theoretic structure.",
-            "The period must be recoverable from a superposition of evaluations.",
-            "It must fit the hidden subgroup problem (HSP) framework.",
+            {"id": "qft.periodic_structure",
+             "text": "The problem must have an underlying periodic or group-theoretic structure."},
+            {"id": "qft.superposition_recovery",
+             "text": "The period must be recoverable from a superposition of evaluations."},
+            {"id": "qft.hsp_framework",
+             "text": "It must fit the hidden subgroup problem (HSP) framework."},
         ],
     },
     {
@@ -45,8 +51,10 @@ PRIMITIVES = [
         "classical_problem_types": ["graph traversal", "element distinctness", "collision"],
         "speedup_class": "polynomial to exponential, problem dependent",
         "prerequisites": [
-            "The problem must be naturally expressible as traversal on a graph or Markov chain.",
-            "The speedup depends on the spectral gap and on hitting/mixing times.",
+            {"id": "quantum_walk.graph_representation",
+             "text": "The problem must be naturally expressible as traversal on a graph or Markov chain."},
+            {"id": "quantum_walk.spectral_conditions",
+             "text": "The speedup depends on the spectral gap and on hitting/mixing times."},
         ],
     },
     {
@@ -55,13 +63,17 @@ PRIMITIVES = [
         "classical_problem_types": ["sparse linear algebra", "PDE solving"],
         "speedup_class": "exponential, but under strict conditions",
         "prerequisites": [
-            "The input matrix must be sparse and well-conditioned (low condition number).",
-            "The solution must be readable as a quantum state -- you may only extract an "
-            "AGGREGATE quantity of x (e.g. <x|M|x>), NOT the full solution vector. "
-            "This is the 'readout problem'.",
-            "Input loading must be efficient (the 'input problem'): preparing |b> must not "
-            "itself cost O(N), or the speedup is lost.",
-            "Both input and output must be in quantum form.",
+            {"id": "hhl.sparse_well_conditioned",
+             "text": "The input matrix must be sparse and well-conditioned (low condition number)."},
+            {"id": "hhl.readout",
+             "text": "The solution must be readable as a quantum state -- you may only extract an "
+                     "AGGREGATE quantity of x (e.g. <x|M|x>), NOT the full solution vector. "
+                     "This is the 'readout problem'."},
+            {"id": "hhl.input_loading",
+             "text": "Input loading must be efficient (the 'input problem'): preparing |b> must not "
+                     "itself cost O(N), or the speedup is lost."},
+            {"id": "hhl.quantum_io",
+             "text": "Both input and output must be in quantum form."},
         ],
     },
     {
@@ -70,8 +82,10 @@ PRIMITIVES = [
         "classical_problem_types": ["Monte Carlo simulation", "counting"],
         "speedup_class": "quadratic: O(1/eps^2) -> O(1/eps)",
         "prerequisites": [
-            "The quantity of interest must be expressible as an amplitude / expectation to estimate.",
-            "The estimator circuit must be implementable efficiently.",
+            {"id": "amplitude_estimation.amplitude_form",
+             "text": "The quantity of interest must be expressible as an amplitude / expectation to estimate."},
+            {"id": "amplitude_estimation.efficient_estimator",
+             "text": "The estimator circuit must be implementable efficiently."},
         ],
     },
     {
@@ -80,9 +94,11 @@ PRIMITIVES = [
         "classical_problem_types": ["combinatorial optimization (NISQ era)"],
         "speedup_class": "heuristic; NO proven asymptotic speedup",
         "prerequisites": [
-            "The problem must be encodable as a cost Hamiltonian.",
-            "Note: any 'speedup' here is heuristic and unproven -- flag as such, never claim "
-            "an asymptotic advantage.",
+            {"id": "vqa_qaoa.hamiltonian_encoding",
+             "text": "The problem must be encodable as a cost Hamiltonian."},
+            {"id": "vqa_qaoa.heuristic_only",
+             "text": "Note: any 'speedup' here is heuristic and unproven -- flag as such, never claim "
+                     "an asymptotic advantage."},
         ],
     },
 ]
@@ -135,7 +151,7 @@ def knowledge_base_as_text() -> str:
         lines.append(f"- Speedup class: {p['speedup_class']}")
         lines.append("- Prerequisites (ALL must hold for a 'high' match):")
         for pre in p["prerequisites"]:
-            lines.append(f"    * {pre}")
+            lines.append(f"    * [{pre['id']}] {pre['text']}")
 
     lines.append("\n## KNOWN QUANTIZATION BARRIERS (check every candidate against these)")
     for b in BARRIERS:
@@ -146,6 +162,12 @@ def knowledge_base_as_text() -> str:
 
 
 PRIMITIVE_IDS = [p["id"] for p in PRIMITIVES] + ["none"]
+
+# Every citable knowledge-base entry: each prerequisite of each primitive
+# ("<primitive>.<condition>") plus each barrier id. This is the closed vocabulary
+# the self-critique auditor must draw its kb_id citations from.
+KB_ENTRY_IDS = ([pre["id"] for p in PRIMITIVES for pre in p["prerequisites"]]
+                + [b["id"] for b in BARRIERS])
 
 if __name__ == "__main__":
     print(knowledge_base_as_text())

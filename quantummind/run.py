@@ -24,8 +24,7 @@ from .algorithms import ALGORITHMS
 from .orchestrator import analyze_algorithm
 from .evaluate import evaluate
 from .llm_client import LLMClient
-
-OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
+from .paths import outputs_root
 
 
 def _md_report(result: dict) -> str:
@@ -77,8 +76,9 @@ def main():
     ap.add_argument("--algo", type=int, help="run one algorithm by index (0-based)")
     args = ap.parse_args()
 
-    os.makedirs(OUT_DIR, exist_ok=True)
     client = LLMClient()
+    out_dir = outputs_root(client.backend)
+    os.makedirs(out_dir, exist_ok=True)
     print(f"Backend: {client.backend} / model: {client.model}\n")
 
     if args.eval:
@@ -86,10 +86,10 @@ def main():
             from .evaluate_consistency import evaluate_consistency, _print_table
             summary = evaluate_consistency(client, k=args.k)
             _print_table(summary)
-            print(f"\nWrote {os.path.join(OUT_DIR, 'consistency_evaluation.json')}")
+            print(f"\nWrote {os.path.join(out_dir, 'consistency_evaluation.json')}")
             return
         summary = evaluate(client)
-        path = os.path.join(OUT_DIR, "evaluation.json")
+        path = os.path.join(out_dir, "evaluation.json")
         with open(path, "w") as f:
             json.dump(summary, f, indent=2)
         print(json.dumps(summary, indent=2))
@@ -107,8 +107,8 @@ def main():
         print(f"Analyzing: {algo['name']}")
         result = analyze_algorithm(algo, client)
         slug = "".join(c if c.isalnum() else "_" for c in algo["name"])[:40]
-        md_path = os.path.join(OUT_DIR, f"report_{slug}.md")
-        json_path = os.path.join(OUT_DIR, f"result_{slug}.json")
+        md_path = os.path.join(out_dir, f"report_{slug}.md")
+        json_path = os.path.join(out_dir, f"result_{slug}.json")
         with open(md_path, "w") as f:
             f.write(_md_report(result))
         with open(json_path, "w") as f:

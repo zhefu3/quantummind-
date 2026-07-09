@@ -23,6 +23,8 @@ def _role(system: str) -> str:
         return "agent3"
     if "INDEPENDENT REVIEWER" in s:
         return "agent4"
+    if "SELF-CRITIQUE AUDITOR" in s:
+        return "self_critique"
     return "unknown"
 
 
@@ -69,6 +71,8 @@ class MockBrain:
             return json.dumps(self._agent3(sig))
         if role == "agent4":
             return json.dumps(self._agent4(sig))
+        if role == "self_critique":
+            return json.dumps(self._self_critique(sig))
         return json.dumps({"_mock": True, "note": "unrecognized agent role"})
 
     # --- Agent 1: structural analysis -------------------------------------
@@ -261,3 +265,21 @@ class MockBrain:
         out = {"_mock": True}
         out.update(table.get(sig, default))
         return out
+
+    # --- Self-critique auditor ----------------------------------------------
+    def _self_critique(self, sig):
+        # Schema-valid placeholder only: one hypothesis with a real kb_id so the
+        # contract validator passes and the plumbing (cache, batch, summary) can
+        # be exercised without a key. No signal-specific content on purpose.
+        return {
+            "_mock": True,
+            "failure_hypotheses": [
+                {"rank": 1, "kb_id": "grover.no_classical_structure",
+                 "doubt": "mock placeholder doubt (not real reasoning)",
+                 "evidence_status": "assumed",
+                 "flip_to": "none",
+                 "expert_check": "mock placeholder check"}],
+            "weakest_agent_claim": {"agent": "2", "claim": "mock placeholder"},
+            "fragility": "moderate",
+            "reasoning": "mock placeholder -- plumbing only",
+        }

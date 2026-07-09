@@ -15,9 +15,7 @@ import os
 from .algorithms import ALGORITHMS
 from .orchestrator import analyze_algorithm
 from .llm_client import LLMClient
-
-OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
-EVAL_DETAILS_DIR = os.path.join(OUT_DIR, "eval_details")
+from .paths import outputs_root
 
 
 def _slug(name: str) -> str:
@@ -26,7 +24,9 @@ def _slug(name: str) -> str:
 
 def evaluate(client: LLMClient | None = None) -> dict:
     client = client or LLMClient()
-    os.makedirs(EVAL_DETAILS_DIR, exist_ok=True)
+    out_dir = outputs_root(client.backend)
+    eval_details_dir = os.path.join(out_dir, "eval_details")
+    os.makedirs(eval_details_dir, exist_ok=True)
     # Questions labelled "unknown" have no fixed ground truth (they are open-ended
     # exploration cases) -- the system can never literally answer "unknown", so
     # scoring them as wrong would only pollute the accuracy. Score the labelled
@@ -39,7 +39,7 @@ def evaluate(client: LLMClient | None = None) -> dict:
 
         # Full Agent 1-4 output (structure/matching/scheme/review) so a failed case
         # can be replayed after the fact -- evaluate() previously discarded this.
-        detail_path = os.path.join(EVAL_DETAILS_DIR, f"{_slug(algo['name'])}.json")
+        detail_path = os.path.join(eval_details_dir, f"{_slug(algo['name'])}.json")
         with open(detail_path, "w") as f:
             json.dump(out, f, indent=2)
 
@@ -49,7 +49,7 @@ def evaluate(client: LLMClient | None = None) -> dict:
             "scheme_speedup": out["scheme"].get("speedup_estimate"),
             "review_verdict": out["review"].get("verdict"),
             "rounds_used": out["rounds_used"],
-            "detail_file": os.path.relpath(detail_path, OUT_DIR),
+            "detail_file": os.path.relpath(detail_path, out_dir),
         }
         if want == "unknown":
             entry["confidence"] = out["matching"].get("overall_confidence")

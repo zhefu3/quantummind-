@@ -24,9 +24,7 @@ from collections import Counter
 from .algorithms import ALGORITHMS
 from .consistency_check import run_pipeline_once
 from .llm_client import LLMClient
-
-OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
-DETAILS_DIR = os.path.join(OUT_DIR, "consistency_eval")
+from .paths import outputs_root
 
 
 def _slug(name: str) -> str:
@@ -44,7 +42,9 @@ def _format_confidence(counts: Counter) -> str:
 def evaluate_consistency(client: LLMClient | None = None, k: int = 3,
                           fresh: bool = False) -> dict:
     client = client or LLMClient()
-    os.makedirs(DETAILS_DIR, exist_ok=True)
+    out_dir = outputs_root(client.backend)
+    details_dir = os.path.join(out_dir, "consistency_eval")
+    os.makedirs(details_dir, exist_ok=True)
 
     # "unknown"-labelled questions are open-ended exploration cases with no ground
     # truth -- the system can never literally answer "unknown", so scoring them as
@@ -56,7 +56,7 @@ def evaluate_consistency(client: LLMClient | None = None, k: int = 3,
     try:
         for idx, algo in enumerate(ALGORITHMS, 1):
             want = algo["known_label"]["primitive"].lower()
-            algo_dir = os.path.join(DETAILS_DIR, _slug(algo["name"]))
+            algo_dir = os.path.join(details_dir, _slug(algo["name"]))
             os.makedirs(algo_dir, exist_ok=True)
 
             gots, confidences, failed = [], [], 0
@@ -124,7 +124,7 @@ def evaluate_consistency(client: LLMClient | None = None, k: int = 3,
             "backend": client.backend,
             "model": client.model,
         }
-        with open(os.path.join(OUT_DIR, "consistency_evaluation.json"), "w") as f:
+        with open(os.path.join(out_dir, "consistency_evaluation.json"), "w") as f:
             json.dump(summary, f, indent=2)
 
     return summary
@@ -170,8 +170,9 @@ def main():
     print(f"Backend: {client.backend} / model: {client.model} / temperature: {client.temperature}")
     summary = evaluate_consistency(client, k=args.k, fresh=args.fresh)
     _print_table(summary)
-    print(f"\nWrote {os.path.join(OUT_DIR, 'consistency_evaluation.json')}")
-    print(f"Per-run reasoning saved under {DETAILS_DIR}/<algorithm>/run_<i>.json")
+    out_dir = outputs_root(client.backend)
+    print(f"\nWrote {os.path.join(out_dir, 'consistency_evaluation.json')}")
+    print(f"Per-run reasoning saved under {os.path.join(out_dir, 'consistency_eval')}/<algorithm>/run_<i>.json")
 
 
 if __name__ == "__main__":

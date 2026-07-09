@@ -16,8 +16,7 @@ import os
 
 from .consistency_check import check_consistency
 from .llm_client import LLMClient
-
-OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
+from .paths import outputs_root
 
 EXPLORATION_ALGORITHMS = [
     "Graph isomorphism",
@@ -103,10 +102,12 @@ def main():
     summaries = run_all(args.n, client, fresh=args.fresh)
     _print_table(summaries)
 
-    with open(os.path.join(OUT_DIR, "exploration_consistency_summary.json"), "w") as f:
+    out_dir = outputs_root(client.backend)
+    summary_path = os.path.join(out_dir, "exploration_consistency_summary.json")
+    with open(summary_path, "w") as f:
         json.dump(summaries, f, indent=2)
-    print(f"\nWrote {os.path.join(OUT_DIR, 'exploration_consistency_summary.json')}")
-    print("Per-run full reasoning saved under outputs/consistency_<algorithm>/run_<i>.json")
+    print(f"\nWrote {summary_path}")
+    print(f"Per-run full reasoning saved under {out_dir}/consistency_<algorithm>/run_<i>.json")
 
 
 if __name__ == "__main__":
