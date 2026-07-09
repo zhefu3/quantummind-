@@ -195,6 +195,18 @@ KNOWN_RESULTS = [
                      "strong connectivity"],
     },
     {
+        "id": "hamoudi_magniez_counting",
+        "problem": "Approximate edge / triangle counting in the general graph query model",
+        "primitive": "amplitude_estimation",
+        "speedup": "quadratically fewer queries than the classical sublinear estimators "
+                   "(quantum mean estimation via 'quantum Chebyshev inequality')",
+        "status": "proven",
+        "model_caveat": "general graph query model (degree/neighbor/edge queries)",
+        "reference": "Hamoudi-Magniez, ICALP 2019 (arXiv:1807.06456)",
+        "keywords": ["triangle counting", "counting triangles", "edge counting",
+                     "subgraph counting", "mean estimation", "frequency moments"],
+    },
+    {
         "id": "quantum_max_flow_matching",
         "problem": "Maximum matching / network flow",
         "primitive": "quantum_walk",

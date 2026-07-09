@@ -14,34 +14,33 @@ match + three-tier triage. Full records in `outputs/screening/<candidate>/`.
 
 ## The 7 advances (non-"none" verdicts)
 
-| candidate | verdict | novelty filter |
+| candidate | verdict | novelty resolution |
 |---|---|---|
 | Adaptive numerical quadrature | amplitude_estimation | rediscovery: Montanaro 2015 |
 | Approximate matching, k mismatches | grover | rediscovery: Ramesh-Vinay 2000 |
 | Implicit-matrix trace estimation | amplitude_estimation | rediscovery: Montanaro 2015 family |
 | Perceptron training | grover | rediscovery: Wiebe-Kapoor-Svore 2016 * |
 | LOO error of 1-NN classifier | grover | rediscovery: Wiebe-Kapoor-Svore 2015 * |
-| Condition number estimation | amplitude_estimation | flagged, but to a WRONG entry (keyword noise) — needs manual check |
-| **Triangle counting (sparse graph)** | **amplitude_estimation** | **unflagged — the one candidate for a literature deep-check** |
+| Condition number estimation | amplitude_estimation | rediscovery, SELF-declared: the scheme's own novelty field cites QSVT singular-value estimation (Gilyen et al. 2019); keyword flag pointed at a wrong entry (noise), manual check confirmed the self-assessment |
+| Triangle counting (sparse graph) | amplitude_estimation | rediscovery: Hamoudi-Magniez ICALP 2019 (arXiv:1807.06456) gives near-optimal quantum approximate triangle counting — found by literature check the morning after, library entry added * |
 
-\* Caught only AFTER this run exposed two gaps in the known-results library
-(quantum perceptron and quantum nearest-neighbor entries were missing; added,
-re-triaged from cache).
+\* Caught only AFTER this run exposed three gaps in the known-results library
+(quantum perceptron, quantum nearest-neighbor, Hamoudi-Magniez subgraph
+counting; all added, re-triaged from cache — now 7/7 flagged).
 
 ## Honest reading
 
-1. **The funnel behaves as designed.** Blind candidates with real (known)
-   quantum speedups were recommended by the pipeline and then routed away from
-   expert attention by the novelty filter. Six independent blind reproductions
-   of known results is calibration evidence for the pipeline's positive
-   verdicts — stronger than the labeled benchmark, since these were not
-   phrased as quantum questions at all.
-2. **No discovery claim.** The single unflagged advance (triangle counting via
-   amplitude estimation over edge-pair predicates) is *adjacent to* known
-   quantum triangle-detection and approximate-counting work; the honest prior
-   is that a literature check finds it known or near-known. It is the right
-   KIND of output to hand an expert, not a finding.
-3. **Library completeness is the Stage-3 bottleneck.** Two of six
+1. **7/7 advances are blind reproductions of known results.** The pipeline's
+   positive verdicts on this pool have a 100% literature-confirmation rate,
+   on candidates that were never phrased as quantum questions. This is
+   stronger calibration evidence than the labeled benchmark (which measures
+   retrieval on textbook cases) — and the funnel correctly claimed **zero
+   discoveries**: nothing false-positive survived to an expert dossier.
+2. **The system's own novelty honesty held.** The condition-number scheme
+   declared itself "largely a rediscovery" unprompted and correctly bounded
+   its speedup (quadratic in precision only, no exponential in n, classical
+   Lanczos as the honest baseline).
+3. **Library completeness is the Stage-3 bottleneck.** Three of seven
    rediscoveries were initially missed for lack of an entry, and one flag
    pointed at the wrong entry (keyword matcher is a recall device, not a
    judge). Every advance needs a manual/LLM literature pass before any expert
