@@ -55,9 +55,16 @@ def _stage1_tiers(screen_dir: str) -> dict[str, str]:
 
 
 def vote(records: list[dict]) -> tuple[str, int, int]:
-    """Majority recommendation across runs -> (answer, votes_for, total)."""
+    """Majority recommendation across runs -> (answer, votes_for, total).
+
+    Returns ('none', 0, 0) when no run completed -- e.g. every rerun failed and the
+    Stage-1 record was absent -- so a candidate whose runs all error does not crash
+    the whole batch with an empty Counter.
+    """
     gots = [(r.get("matching", {}).get("recommendation") or "none").lower()
             for r in records]
+    if not gots:
+        return "none", 0, 0
     counts = Counter(gots)
     answer, n = counts.most_common(1)[0]
     return answer, n, len(gots)
@@ -101,41 +108,47 @@ def main() -> int:
         print("WARNING: mock backend -- plumbing only.")
 
     results = []
+    out_path = os.path.join(screen_dir, "stage2_summary.json")
     t0 = time.time()
-    for i, cand in enumerate(todo, 1):
-        cand_dir = os.path.join(screen_dir, _slug(cand["name"]))
-        records = []
-        failed = 0
-        for run_i in range(1, args.k + 1):
-            # Stage-1 record is run 1; extra runs get their own files.
-            path = (os.path.join(cand_dir, "record.json") if run_i == 1
-                    else os.path.join(cand_dir, f"record_{run_i}.json"))
-            rec, err, _cached = run_pipeline_once(cand, client, path)
-            if err is not None:
-                failed += 1
-                print(f"  {cand['name'][:40]}: run {run_i} FAILED -- {err}")
-                continue
-            records.append(rec)
+    try:
+        for i, cand in enumerate(todo, 1):
+            cand_dir = os.path.join(screen_dir, _slug(cand["name"]))
+            records = []
+            failed = 0
+            for run_i in range(1, args.k + 1):
+                # Stage-1 record is run 1; extra runs get their own files.
+                path = (os.path.join(cand_dir, "record.json") if run_i == 1
+                        else os.path.join(cand_dir, f"record_{run_i}.json"))
+                rec, err, _cached = run_pipeline_once(cand, client, path)
+                if err is not None:
+                    failed += 1
+                    print(f"  {cand['name'][:40]}: run {run_i} FAILED -- {err}")
+                    continue
+                records.append(rec)
 
-        answer, n_votes, n_total = vote(records)
-        stage1_tier = tiers[cand["name"]]
-        if stage1_tier == "escalate":
-            outcome = "PROMOTE" if answer != "none" else "cut"
-        else:  # advance
-            outcome = "CONFIRM" if answer != "none" else "DEMOTE"
-        entry = {
-            "name": cand["name"], "domain": cand["domain"],
-            "stage1_tier": stage1_tier,
-            "votes": dict(Counter((r.get("matching", {}).get("recommendation") or
-                                   "none").lower() for r in records)),
-            "majority": answer, "majority_count": n_votes, "k_completed": n_total,
-            "failed_runs": failed, "stage2_outcome": outcome,
-        }
-        results.append(entry)
-        elapsed = (time.time() - t0) / 60
-        print(f"[{i}/{len(todo)}] {cand['name'][:44]:<46} {stage1_tier:<9} "
-              f"majority={answer:<22} {n_votes}/{n_total}  -> {outcome} "
-              f"({elapsed:.1f} min)")
+            answer, n_votes, n_total = vote(records)
+            stage1_tier = tiers[cand["name"]]
+            if stage1_tier == "escalate":
+                outcome = "PROMOTE" if answer != "none" else "cut"
+            else:  # advance
+                outcome = "CONFIRM" if answer != "none" else "DEMOTE"
+            results.append({
+                "name": cand["name"], "domain": cand["domain"],
+                "stage1_tier": stage1_tier,
+                "votes": dict(Counter((r.get("matching", {}).get("recommendation") or
+                                       "none").lower() for r in records)),
+                "majority": answer, "majority_count": n_votes, "k_completed": n_total,
+                "failed_runs": failed, "stage2_outcome": outcome,
+            })
+            elapsed = (time.time() - t0) / 60
+            print(f"[{i}/{len(todo)}] {cand['name'][:44]:<46} {stage1_tier:<9} "
+                  f"majority={answer:<22} {n_votes}/{n_total}  -> {outcome} "
+                  f"({elapsed:.1f} min)")
+    finally:
+        # Always persist what completed -- a crash or interrupt mid-batch must not
+        # lose the candidates already rechecked (they cost real API calls).
+        with open(out_path, "w") as f:
+            json.dump(results, f, indent=2)
 
     print(f"\n===== STAGE 2 (K={args.k}) =====")
     for label in ("CONFIRM", "PROMOTE", "DEMOTE", "cut"):
@@ -145,9 +158,6 @@ def main() -> int:
             print(f"  {r['name'][:50]:<52} {r['majority']:<22} "
                   f"{r['majority_count']}/{r['k_completed']}")
 
-    out_path = os.path.join(screen_dir, "stage2_summary.json")
-    with open(out_path, "w") as f:
-        json.dump(results, f, indent=2)
     print(f"\nSummary written to {out_path}")
     n_failed = sum(r["failed_runs"] for r in results)
     if n_failed:

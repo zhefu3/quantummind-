@@ -196,8 +196,20 @@ def test_dossier():
           "dossier body missing expected sections")
 
 
+# --- I. stage2 vote guard -----------------------------------------------------
+def test_stage2_vote():
+    from .stage2 import vote
+    check(vote([]) == ("none", 0, 0), "vote([]) must not crash and must return ('none',0,0)")
+    recs = [{"matching": {"recommendation": "grover"}},
+            {"matching": {"recommendation": "grover"}},
+            {"matching": {"recommendation": "none"}}]
+    ans, n, total = vote(recs)
+    check((ans, n, total) == ("grover", 2, 3), f"vote majority wrong: {(ans, n, total)}")
+
+
 ALL = [test_knowledge_base, test_known_results, test_pools, test_agent_schemas,
-       test_pipeline, test_self_critique, test_output_isolation, test_dossier]
+       test_pipeline, test_self_critique, test_output_isolation, test_dossier,
+       test_stage2_vote]
 
 
 def main() -> int:
