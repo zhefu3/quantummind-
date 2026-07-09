@@ -7,19 +7,21 @@ observed rates; no model was called to produce this.
 ## What v2 is
 
 43 candidates across 10 under-explored domains. `--preflight` (nearest known
-result, no pipeline run) splits them **16 cold / 27 warm**:
+result, no pipeline run) splits them **19 cold / 24 warm**:
 
 | | count | reading |
 |---|---|---|
-| **warm** | 27 | already resembles a proven/conditional known result → will very likely screen as a rediscovery |
-| **cold** | 16 | no strong library match → *but* most still reduce structurally to a known template (see below) |
+| **warm** | 24 | already resembles a proven/conditional known result → will very likely screen as a rediscovery |
+| **cold** | 19 | no strong library match → *but* most still reduce structurally to a known template (see below) |
 
-The 16 cold candidates by structural type (the honest reason "cold" ≠ "novel"):
+The cold candidates by structural type (the honest reason "cold" ≠ "novel") — the
+vast majority still reduce to a known template, they just miss the keyword filter
+for lack of an applied-problem library entry:
 - **Oracle-checkable search over an exponential space** → Grover / quantum
   backtracking: superoptimization, SyGuS synthesis, peephole discovery, index
   selection, loop-invariant search, motif search, RNA inverse folding, MAP
   inference, VRP, nurse rostering, cutting-stock, fault localization, coverage
-  subset, packet-classification minimization (14 of 16).
+  subset, packet-classification minimization (the large majority).
 - **Mean/count estimation** → amplitude/mean estimation: distinct-value estimation.
 - **Design negative** (should be "none"): topological sort.
 
