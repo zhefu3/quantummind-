@@ -142,7 +142,8 @@ Findings from real-model runs (claude-sonnet-4-6, temperature 0.2) — see
 | `llm_client.py` | model-agnostic client (mock / anthropic / openai) |
 | `mock_brain.py` | deterministic placeholder so it runs without a key |
 | `run.py` | CLI |
-| `docs/` | experiment writeups (consistency, exploration) |
+| `docs/ARCHITECTURE.md` | one-page map of the whole system (start here) |
+| `docs/` | experiment writeups (consistency, exploration, funnel, calibration) |
 
 ## Next steps (not yet built)
 
