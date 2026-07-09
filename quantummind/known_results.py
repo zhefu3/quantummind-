@@ -263,6 +263,19 @@ KNOWN_RESULTS = [
                      "quantum machine learning", "qml"],
     },
     {
+        "id": "qsvt_framework",
+        "problem": "Singular-value estimation / matrix functions via QSVT + block-encoding",
+        "primitive": "qsvt",
+        "speedup": "generalizes HHL / amplitude amplification / Hamiltonian simulation; "
+                   "same conditional (aggregate-readout, well-conditioned) advantage",
+        "status": "conditional",
+        "model_caveat": "block-encoding + aggregate readout required; full-vector output "
+                        "or ill-conditioning erases the gain (same wall as HHL)",
+        "reference": "Gilyen-Su-Low-Wiebe 2019 (quantum singular value transformation)",
+        "keywords": ["singular value", "condition number", "matrix function", "block encoding",
+                     "qsvt", "spectral", "eigenvalue estimation"],
+    },
+    {
         "id": "jordan_gradient",
         "problem": "Estimating a gradient of f: R^d -> R",
         "primitive": "qft",
