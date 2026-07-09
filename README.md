@@ -60,6 +60,7 @@ python -m quantummind.self_critique --injection    # known-error calibration cas
 # Discovery funnel, Stage 1 (candidate pool -> triaged survivors):
 python -m quantummind.screen --estimate            # projected cost, runs nothing
 python -m quantummind.screen --limit 5             # pilot batch (resumable)
+python -m quantummind.screen --pool v2 --preflight  # zero-cost: nearest known result per candidate
 python -m quantummind.screen --pool v2 --estimate  # v2 = colder domains (v1 default)
 python -m quantummind.stage2 --pool v1 --estimate  # Stage 2 K-vote recheck of survivors
 python -m quantummind.dossier --pool v1            # expert dossiers from archives (no cost)

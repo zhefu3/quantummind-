@@ -342,6 +342,57 @@ CANDIDATES = [
                     "Output is one minimal ruleset.",
      "cold_rationale": "Equivalence-checked minimization search; no quantum treatment."},
 
+    # --- Aggregate-output spectral / linear-algebra queries -----------------
+    # Deliberately NOT search- or estimation-template problems. A preflight showed
+    # most cold-domain candidates still reduce to Grover/backtracking (search) or
+    # amplitude/mean estimation, which are well studied. These target the newer
+    # QSVT/linear-systems CONDITIONAL regime: a single scalar/aggregate readout
+    # over a large sparse operator, where the interesting question is whether the
+    # aggregate-only output dodges the readout wall. Structurally further from the
+    # swept templates.
+    {"name": "Effective resistance between two nodes of a large network",
+     "domain": "spectral_queries",
+     "description": "Compute the effective resistance between a single pair of nodes in a "
+                    "large sparse resistor network, i.e. one entry of the graph Laplacian "
+                    "pseudoinverse. The required output is a single scalar (O(1)); the full "
+                    "pseudoinverse is never needed. Classically this is a linear solve "
+                    "against the Laplacian.",
+     "cold_rationale": "A single-aggregate linear-system query (QSVT/HHL-conditional shape) "
+                       "where the O(1) output may dodge the readout wall -- structurally "
+                       "distinct from the search/estimation templates that dominate the pool."},
+    {"name": "Single-vertex PageRank score query",
+     "domain": "spectral_queries",
+     "description": "Return the PageRank of ONE designated vertex of a large web graph (one "
+                    "entry of the stationary distribution of the Google matrix), not the whole "
+                    "ranking. Required output is a single scalar (O(1)). Classically a power "
+                    "iteration or a linear solve.",
+     "cold_rationale": "One entry of a stationary distribution = aggregate linear-algebra "
+                       "query; the single-entry framing (vs full ranking) is the readout-"
+                       "favorable case worth a QSVT look."},
+    {"name": "Spectral-gap estimation of a sparse Markov chain",
+     "domain": "spectral_queries",
+     "description": "Estimate the spectral gap (1 minus the second-largest eigenvalue) of a "
+                    "large sparse stochastic matrix, which controls mixing time. Required "
+                    "output is a single scalar (O(1)). Classically via iterative eigensolvers.",
+     "cold_rationale": "Extremal singular/eigenvalue estimation of a sparse operator -- the "
+                       "QSVT sweet spot, in an applied Markov-chain framing rather than the "
+                       "usual physics Hamiltonian one."},
+    {"name": "Katz centrality of a single node via matrix resolvent",
+     "domain": "spectral_queries",
+     "description": "Compute the Katz centrality of one node -- one entry of (I - alpha A)^{-1} "
+                    "summed appropriately -- for a large sparse adjacency matrix A. Required "
+                    "output is a single scalar (O(1)).",
+     "cold_rationale": "A single resolvent-entry query, aggregate readout, block-encodable "
+                       "sparse operator -- QSVT-conditional and not a search/estimation template."},
+    {"name": "Triangle-density (global clustering coefficient) estimate",
+     "domain": "spectral_queries",
+     "description": "Estimate the global clustering coefficient (a normalized triangle count) "
+                    "of a large sparse graph to relative error. Required output is a single "
+                    "scalar (O(1)); expressible as a normalized trace of A^3.",
+     "cold_rationale": "A trace-of-matrix-power aggregate -- sits between mean estimation and "
+                       "QSVT; a useful probe of whether the pipeline routes trace queries to "
+                       "the right primitive rather than defaulting to plain amplitude estimation."},
+
     # --- Contrast probes (design negatives for v2) --------------------------
     {"name": "Topological sort of a DAG",
      "domain": "contrast",

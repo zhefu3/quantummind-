@@ -129,8 +129,34 @@ def _print_triage(entries: list[dict]) -> None:
               f"{str(e['fragility']):<10} {e['tier'].upper():<10} {', '.join(flags)}")
 
 
+def preflight(candidates: list[dict]) -> None:
+    """Zero-cost pre-spend triage: for each candidate show its nearest known
+    quantum results and a coldness signal, WITHOUT running the pipeline. A strong
+    match to a proven/conditional result means the domain is probably already
+    studied (likely rediscovery); no strong match means the pipeline's verdict,
+    whatever it is, would at least be landing in genuinely unswept territory.
+    Use it to prune a pool before spending, and to set expectations."""
+    warm, cold = [], []
+    print(f"{'candidate':<50} {'signal':<6} nearest known result")
+    print("-" * 108)
+    for c in sorted(candidates, key=lambda x: x["domain"]):
+        hits = match_known_results(f"{c['name']} {c['description']}")
+        strong = [h for h in hits if h["status"] in ("proven", "conditional")]
+        signal = "WARM" if strong else "cold"
+        (warm if strong else cold).append(c["name"])
+        top = (strong or hits or [{}])[0]
+        note = f"{top.get('id', '—')} ({top.get('status', 'no match')})" if top else "no match"
+        print(f"{c['name'][:48]:<50} {signal:<6} {note}")
+    print(f"\n{len(cold)} cold (no strong known match) / {len(warm)} warm "
+          f"(already resembles a proven/conditional result).")
+    print("WARM candidates are likely rediscoveries -- consider pruning before a paid run; "
+          "the funnel will still route them to the calibration appendix if run.")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Stage-1 screening over the candidate pool.")
+    ap.add_argument("--preflight", action="store_true",
+                    help="zero-cost: show nearest known results + coldness per candidate, run nothing")
     ap.add_argument("--estimate", action="store_true",
                     help="print projected calls/cost and exit without running anything")
     ap.add_argument("--limit", type=int, default=0, help="screen only the first N candidates")
@@ -148,6 +174,11 @@ def main() -> int:
         candidates = [c for c in candidates if c["domain"] == args.domain]
     if args.limit:
         candidates = candidates[:args.limit]
+
+    if args.preflight:
+        print(f"Pool: {args.pool} ({len(candidates)} candidates) -- PREFLIGHT (no pipeline run)\n")
+        preflight(candidates)
+        return 0
 
     if args.estimate:
         print(f"Pool: {args.pool}")

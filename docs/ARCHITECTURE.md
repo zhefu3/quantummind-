@@ -77,6 +77,18 @@ candidate pool  ──Stage 1──▶  survivors  ──Stage 2──▶  confi
    already-studied; v2 targets structurally-promising-but-unswept domains.
 Both need a paid run to produce candidates; the run is gated on advisor direction.
 
+**Discovery-frontier reality (from a zero-cost preflight of v2).** A `--preflight`
+pass — which shows each candidate's nearest known result without running the pipeline
+— makes an honest point concrete: even in under-explored domains, most classical
+problems still *reduce to a known template* (search → Grover/backtracking, estimation
+→ amplitude/mean estimation), so they will screen as rediscoveries. "Find an unswept
+domain" is not the same as "find something novel." The genuinely promising candidates
+are the ones whose structure does **not** reduce to a search/estimation template —
+e.g. aggregate-output spectral / linear-algebra queries (single scalar over a large
+sparse operator, the QSVT-conditional regime), which v2 now includes deliberately.
+This tempers expectations for any paid run without diminishing its value: rediscoveries
+are calibration evidence, and the occasional non-template candidate is the real prize.
+
 A third reasoning aid — **near-neighbor anchoring** (roadmap step 3) — is built and
 opt-in (`--anchoring`): it feeds Agent 3 the candidate's nearest known quantum
 results and forces an explicit "reduces to X (rediscovery)" or "differs decisively
