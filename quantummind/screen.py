@@ -87,18 +87,23 @@ def triage_entry(record: dict, critique: dict, candidate: dict) -> dict:
                             and novelty_hits[0]["status"] in ("proven", "conditional")
                             and recommendation != "none")
 
+    scope = record.get("scheme", {}).get("speedup_scope")
     top_hyp = min(critique.get("failure_hypotheses") or [{}],
                   key=lambda h: h.get("rank", 99))
     return {
         "name": candidate["name"],
         "domain": candidate["domain"],
         "recommendation": recommendation,
+        "speedup_scope": scope,
         "confidence": record.get("matching", {}).get("overall_confidence"),
         "review_verdict": record.get("review", {}).get("verdict"),
         "fragility": fragility,
         "top_doubt_kb_id": top_hyp.get("kb_id"),
         "expert_check": top_hyp.get("expert_check"),
         "tier": tier,
+        # A sub-step-only advance is a real result but must not be read as a
+        # whole-algorithm speedup -- surface it so dossiers scope it honestly.
+        "sub_step_only": recommendation != "none" and scope == "sub_step",
         "rediscovery_risk": rediscovery_risk,
         "known_results_matches": novelty_hits,
         "rounds_used": record.get("rounds_used"),
@@ -116,6 +121,8 @@ def _print_triage(entries: list[dict]) -> None:
     print("-" * 116)
     for e in sorted(entries, key=lambda x: (TIER_ORDER[x["tier"]], x["name"])):
         flags = []
+        if e.get("sub_step_only"):
+            flags.append("sub-step only")
         if e["rediscovery_risk"]:
             flags.append(f"rediscovery? ({e['known_results_matches'][0]['id']})")
         print(f"{e['name'][:46]:<48} {e['recommendation'][:20]:<22} "

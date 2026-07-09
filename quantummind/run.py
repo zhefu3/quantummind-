@@ -53,6 +53,7 @@ def _md_report(result: dict) -> str:
 ## 3. Candidate scheme (Agent 3)
 - **Scheme:** {sc.get('scheme')}
 - **Speedup estimate:** {sc.get('speedup_estimate')}
+- **Speedup scope:** `{sc.get('speedup_scope', 'n/a')}`
 - **I/O accounting:** {sc.get('io_accounting')}
 - **Prerequisites:** {', '.join(sc.get('prerequisites', [])) or 'none'}
 - **Obstacles:** {', '.join(sc.get('obstacles', [])) or 'none'}

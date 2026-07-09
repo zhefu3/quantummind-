@@ -223,7 +223,9 @@ class MockBrain:
                             speedup_estimate="unknown", io_accounting="N/A",
                             prerequisites=[], obstacles=[], novelty="unknown", confidence="low"),
         }
-        out = {"_mock": True}
+        scope = {"search": "full_algorithm", "periodic": "full_algorithm",
+                 "montecarlo": "full_algorithm"}.get(sig, "none")
+        out = {"_mock": True, "speedup_scope": scope}
         out.update(table.get(sig, table["generic"]))
         return out
 
