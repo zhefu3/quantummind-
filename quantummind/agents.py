@@ -110,11 +110,32 @@ Output JSON with exactly these keys:
  "confidence": "high|medium|low"}"""
 
 
-def agent3_user(algorithm: dict, structure: dict, matching: dict) -> str:
+def _anchor_block(anchors: list) -> str:
+    """Near-neighbor anchoring (roadmap step 3): known results resembling this
+    problem, injected to force a grounded rediscovery-or-decisive-difference call.
+    Goes in the USER message (per-candidate, volatile) so the cached system prompt
+    is untouched, and only reaches Agent 3 -- Agent 2 stays quantum-blind."""
+    if not anchors:
+        return ""
+    lines = ["\n\nNEAREST KNOWN QUANTUM RESULTS (for novelty grounding only):"]
+    for a in anchors:
+        lines.append(f"- [{a['id']}] {a['problem']} -- status {a['status']}; "
+                     f"speedup: {a.get('speedup', '?')}; ref: {a.get('reference', '?')}")
+    lines.append(
+        "In your `novelty` field you MUST address these: state explicitly whether this "
+        "scheme REDUCES TO one of them (name which id -- that makes it a rediscovery) or "
+        "DIFFERS DECISIVELY (say precisely which structural condition differs). Do not "
+        "claim novelty without confronting the closest anchor. This does not change your "
+        "speedup analysis -- only how honestly you place the result against known work.")
+    return "\n".join(lines)
+
+
+def agent3_user(algorithm: dict, structure: dict, matching: dict, anchors: list = None) -> str:
     import json
     return (f"Algorithm: {algorithm['name']}\n\n"
             f"STRUCTURAL REPORT:\n{json.dumps(structure, indent=2)}\n\n"
-            f"MATCHER VERDICT:\n{json.dumps(matching, indent=2)}")
+            f"MATCHER VERDICT:\n{json.dumps(matching, indent=2)}"
+            f"{_anchor_block(anchors)}")
 
 
 # ---------------------------------------------------------------------------

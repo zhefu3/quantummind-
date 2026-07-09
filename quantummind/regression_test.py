@@ -127,6 +127,12 @@ def test_pipeline():
     cyk = analyze_algorithm(cases[1], c, verbose=False)
     check(cyk["scheme"]["speedup_scope"] == "sub_step",
           "CYK-like backtracking case should be scoped sub_step")
+    # near-neighbor anchoring (opt-in) records which known results it injected
+    anch = analyze_algorithm({"name": "Monte Carlo expectation estimation",
+                              "description": "estimate an expectation to precision eps"},
+                             c, verbose=False, anchoring=True)
+    check("anchors_used" in anch and isinstance(anch["anchors_used"], list),
+          "anchoring run should record anchors_used")
 
 
 # --- F. self-critique contract (mock) -----------------------------------------

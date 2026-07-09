@@ -139,6 +139,8 @@ def main() -> int:
                     help="candidate pool to screen (v1 = gray zone, v2 = cold domains)")
     ap.add_argument("--fresh", action="store_true",
                     help="ignore cached results and re-run")
+    ap.add_argument("--anchoring", action="store_true",
+                    help="ground Agent 3 novelty in nearest known_results (opt-in)")
     args = ap.parse_args()
 
     candidates = get_pool(args.pool)
@@ -167,7 +169,8 @@ def main() -> int:
         record_path = os.path.join(cand_dir, "record.json")
         critique_path = os.path.join(cand_dir, "critique.json")
 
-        record, err, cached = run_pipeline_once(cand, client, record_path, fresh=args.fresh)
+        record, err, cached = run_pipeline_once(cand, client, record_path,
+                                                fresh=args.fresh, anchoring=args.anchoring)
         if err is not None:
             print(f"[{i}/{len(candidates)}] {cand['name'][:45]}: FAILED -- {err}")
             entries.append({"name": cand["name"], "domain": cand["domain"],

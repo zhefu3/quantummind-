@@ -77,6 +77,13 @@ candidate pool  ──Stage 1──▶  survivors  ──Stage 2──▶  confi
    already-studied; v2 targets structurally-promising-but-unswept domains.
 Both need a paid run to produce candidates; the run is gated on advisor direction.
 
+A third reasoning aid — **near-neighbor anchoring** (roadmap step 3) — is built and
+opt-in (`--anchoring`): it feeds Agent 3 the candidate's nearest known quantum
+results and forces an explicit "reduces to X (rediscovery)" or "differs decisively
+because Y" call, moving novelty reasoning upstream of the post-hoc filter. Agent 2
+stays blind; the default pipeline is unchanged (comparability). Needs an A/B run to
+confirm it sharpens rather than biases before becoming default.
+
 ## Honest status
 
 - End-to-end on v1: 49 blind candidates → 9 survivors → **all 9 literature-confirmed
