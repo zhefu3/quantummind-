@@ -7,12 +7,14 @@ The funnel logic (expert time is the scarce resource):
   candidate pool (candidate_pool.py)
       |  full pipeline (Agents 1-4) + self-critique + known-results match
       v
-  triage:
-    SURVIVOR if the recommendation is not "none"        (claimed speedup), or
-             if it is "none" but self-critique says the none is FRAGILE
-             (the documented failure mode: real speedups hide in
-              over-conservative "none" verdicts -- see docs/)
-    CUT      otherwise (robust/moderate "none")
+  triage (three tiers -- calibrated against the 2026-07-09 pilot, where
+  "fragile none => direct survivor" passed 4/5 candidates and compressed nothing):
+    ADVANCE  recommendation is not "none" (claimed speedup) -> Stage 2 directly
+    ESCALATE "none" but self-critique rates it FRAGILE -> cheap K-vote recheck
+             first (the documented failure mode says real speedups hide in
+             over-conservative nones, but fragile fires too often to admit
+             candidates outright)
+    CUT      otherwise (moderate/robust "none")
   plus a REDISCOVERY flag when the scheme keyword-matches a known result --
   rediscoveries are calibration evidence, not expert-facing findings.
 
@@ -68,7 +70,12 @@ def estimate(n: int) -> None:
 def triage_entry(record: dict, critique: dict, candidate: dict) -> dict:
     recommendation = (record.get("matching", {}).get("recommendation") or "none").lower()
     fragility = critique.get("fragility")
-    survivor = recommendation != "none" or fragility == "fragile"
+    if recommendation != "none":
+        tier = "advance"
+    elif fragility == "fragile":
+        tier = "escalate"
+    else:
+        tier = "cut"
 
     scheme_text = json.dumps(record.get("scheme", {}))
     novelty_hits = match_known_results(
@@ -88,28 +95,28 @@ def triage_entry(record: dict, critique: dict, candidate: dict) -> dict:
         "fragility": fragility,
         "top_doubt_kb_id": top_hyp.get("kb_id"),
         "expert_check": top_hyp.get("expert_check"),
-        "survivor": survivor,
+        "tier": tier,
         "rediscovery_risk": rediscovery_risk,
         "known_results_matches": novelty_hits,
         "rounds_used": record.get("rounds_used"),
     }
 
 
+TIER_ORDER = {"advance": 0, "escalate": 1, "cut": 2}
+
+
 def _print_triage(entries: list[dict]) -> None:
-    survivors = [e for e in entries if e["survivor"]]
-    cut = [e for e in entries if not e["survivor"]]
-    print(f"\n===== TRIAGE: {len(survivors)} survivor(s), {len(cut)} cut, "
-          f"{len(entries)} screened =====")
-    print(f"\n{'candidate':<48} {'rec':<22} {'fragility':<10} {'flags'}")
-    print("-" * 110)
-    for e in sorted(entries, key=lambda x: (not x["survivor"], x["name"])):
+    counts = {t: sum(1 for e in entries if e["tier"] == t) for t in TIER_ORDER}
+    print(f"\n===== TRIAGE: {counts['advance']} advance, {counts['escalate']} escalate, "
+          f"{counts['cut']} cut, {len(entries)} screened =====")
+    print(f"\n{'candidate':<48} {'rec':<22} {'fragility':<10} {'tier':<10} {'flags'}")
+    print("-" * 116)
+    for e in sorted(entries, key=lambda x: (TIER_ORDER[x["tier"]], x["name"])):
         flags = []
-        if e["survivor"]:
-            flags.append("SURVIVOR")
         if e["rediscovery_risk"]:
             flags.append(f"rediscovery? ({e['known_results_matches'][0]['id']})")
         print(f"{e['name'][:46]:<48} {e['recommendation'][:20]:<22} "
-              f"{str(e['fragility']):<10} {', '.join(flags)}")
+              f"{str(e['fragility']):<10} {e['tier'].upper():<10} {', '.join(flags)}")
 
 
 def main() -> int:
@@ -151,7 +158,7 @@ def main() -> int:
         if err is not None:
             print(f"[{i}/{len(candidates)}] {cand['name'][:45]}: FAILED -- {err}")
             entries.append({"name": cand["name"], "domain": cand["domain"],
-                            "error": err, "survivor": False, "rediscovery_risk": False})
+                            "error": err, "tier": "cut", "rediscovery_risk": False})
             continue
 
         if os.path.exists(critique_path) and not args.fresh:
@@ -167,7 +174,7 @@ def main() -> int:
         elapsed = (time.time() - t0) / 60
         print(f"[{i}/{len(candidates)}] {cand['name'][:45]:<47} "
               f"rec={entry['recommendation']:<20} fragility={entry['fragility']} "
-              f"{'SURVIVOR' if entry['survivor'] else 'cut'}"
+              f"{entry['tier'].upper()}"
               f"{' (cached)' if cached else ''} ({elapsed:.1f} min)")
 
     _print_triage([e for e in entries if "error" not in e])
