@@ -282,6 +282,28 @@ KNOWN_RESULTS = [
                      "held-karp", "exact exponential"],
     },
 
+    {
+        "id": "quantum_perceptron",
+        "problem": "Perceptron training (finding a misclassified sample per update)",
+        "primitive": "grover",
+        "speedup": "O(N) -> O(sqrt(N)) per mistake-search via Grover over samples",
+        "status": "proven",
+        "model_caveat": "query model; also a version improving the mistake bound itself",
+        "reference": "Wiebe-Kapoor-Svore 2016",
+        "keywords": ["perceptron", "misclassified sample", "linear separator", "mistake bound"],
+    },
+    {
+        "id": "quantum_nearest_neighbor",
+        "problem": "Nearest-neighbor search / classification",
+        "primitive": "grover",
+        "speedup": "quadratic in the number of points (Durr-Hoyer minimum over distances)",
+        "status": "proven",
+        "model_caveat": "query model; distance oracle must be efficient; QRAM caveats "
+                        "for loading the point set",
+        "reference": "Wiebe-Kapoor-Svore 2015",
+        "keywords": ["nearest neighbor", "1-nn", "knn", "closest point", "distance minimization"],
+    },
+
     # --- Strings -------------------------------------------------------------
     {
         "id": "quantum_string_matching",
