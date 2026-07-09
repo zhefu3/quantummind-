@@ -76,6 +76,35 @@ decision — either way the flags are substantive, not generic hedging.
    id — a vocabulary slip, not a reasoning failure. An explicit prompt rule
    fixed it: 0/42 violations after re-running those 5.
 
+## Deeper analysis of the 42 critiques (offline, no cost)
+
+Re-mining the archived batch (no new model calls) sharpens the picture and settles
+one proposed change:
+
+1. **Fragility tracks the right direction.** Splitting by the pipeline's verdict:
+   positive ("has-speedup") verdicts skew fragile (13 fragile / 7 moderate); "none"
+   verdicts skew moderate (9 fragile / 13 moderate). The system is **more
+   self-doubtful about its speedup claims than about its nulls** — precisely the
+   asymmetry a screening instrument should have, and independent corroboration that
+   the fragility label carries real signal, not noise.
+2. **"robust" is structurally unreachable — do not try to resurrect it.** Across all
+   126 hypotheses in the batch, `evidence_status` is 96 *assumed* / 30 *contested* /
+   **0 established**. The premortem framing ("reconstruct the most plausible way this
+   is wrong") always surfaces an assumed or contested weak link, so the top
+   hypothesis is never "established". A tested alternative — deriving fragility
+   mechanically from the top hypothesis's `evidence_status` — is **worse** (41
+   fragile / 1 moderate, destroying the direction-tracking in point 1). Conclusion:
+   keep the model's holistic fragility label; treat fragility as a two-level
+   high-recall risk screen, and put the real discrimination downstream (Stage-2
+   K-vote, and the specificity of `expert_check`). This supersedes the earlier
+   "recalibrate the rubric" follow-up.
+3. **The self-identified fault lines are the genuinely hard conditions.** The
+   most-cited weak link (top-hypothesis `kb_id`) is `quantum_walk.spectral_conditions`
+   (16×, dominated by the graph-connectivity family — the query-model vs realistic
+   cost-model boundary) followed by `output_dense` (10×, the readout wall). These are
+   the two hardest real issues in quantum-algorithm analysis; the auditor is pointing
+   at true cruxes, not hedging.
+
 ## Screening pilot (Stage 1, first 5 geometry candidates, ~$0.5)
 
 All five verdicts were "none". Three-tier triage: **0 advance / 4 escalate /
