@@ -79,12 +79,17 @@ def main() -> int:
     ap.add_argument("--limit", type=int, default=0, help="recheck only the first N")
     ap.add_argument("--pool", default=DEFAULT_POOL,
                     help="which pool's Stage-1 results to recheck (must match screen --pool)")
+    ap.add_argument("--tier", choices=("advance", "escalate", "both"), default="both",
+                    help="recheck only this tier (default both). 'escalate' targets the "
+                         "fragile 'none's where a hidden speedup could flip, skipping "
+                         "advances already confirmed as rediscoveries")
     args = ap.parse_args()
 
     client = LLMClient()
     screen_dir = os.path.join(outputs_root(client.backend), "screening", args.pool)
     tiers = _stage1_tiers(screen_dir)
-    names = [n for n, t in tiers.items() if t in ("advance", "escalate")]
+    wanted = ("advance", "escalate") if args.tier == "both" else (args.tier,)
+    names = [n for n, t in tiers.items() if t in wanted]
     by_name = {c["name"]: c for c in get_pool(args.pool)}
     todo = [by_name[n] for n in names if n in by_name]
     if args.limit:
