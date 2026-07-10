@@ -59,7 +59,8 @@ prerequisite or barrier. Find the weakest links.
 RULES -- every failure hypothesis MUST:
 1. Cite exactly one kb_id: either a specific prerequisite of a specific primitive (e.g.
    "hhl.readout") or a specific barrier (e.g. "output_dense"), exactly as written in the
-   knowledge base above.
+   knowledge base above. A primitive id alone (e.g. "grover", "quantum_walk") is NOT a
+   valid kb_id -- name the specific prerequisite of that primitive your doubt targets.
 2. State a problem-specific doubt: a checkable claim about THIS algorithm which, if it
    turned out true, would flip the verdict. It must engage with concrete content of the
    structural report or scheme, not raise a generic concern.

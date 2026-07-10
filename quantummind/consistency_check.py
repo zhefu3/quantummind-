@@ -31,7 +31,8 @@ def _slug(name: str) -> str:
 
 
 def run_pipeline_once(algo: dict, client: LLMClient, out_path: str,
-                      fresh: bool = False) -> tuple[dict | None, str | None, bool]:
+                      fresh: bool = False,
+                      anchoring: bool = False) -> tuple[dict | None, str | None, bool]:
     """One full pipeline pass with a disk cache and retry-with-backoff.
 
     If out_path already exists (and fresh is False), load and return it
@@ -49,7 +50,7 @@ def run_pipeline_once(algo: dict, client: LLMClient, out_path: str,
     last_err = None
     for attempt in range(len(RETRY_BACKOFFS) + 1):
         try:
-            out = analyze_algorithm(algo, client, verbose=False)
+            out = analyze_algorithm(algo, client, verbose=False, anchoring=anchoring)
             with open(out_path, "w") as f:
                 json.dump(out, f, indent=2)
             return out, None, False

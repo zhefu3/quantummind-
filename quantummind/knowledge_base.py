@@ -101,6 +101,68 @@ PRIMITIVES = [
                      "an asymptotic advantage."},
         ],
     },
+    {
+        "id": "quantum_backtracking",
+        "name": "Quantum Backtracking / Tree Search",
+        "classical_problem_types": ["backtracking search", "constraint satisfaction",
+                                    "branch-and-bound", "DP with an unstructured inner search"],
+        "speedup_class": "up to quadratic in the size of the explored search tree",
+        "prerequisites": [
+            {"id": "quantum_backtracking.tree_structure",
+             "text": "The computation must be expressible as exploring a search tree whose nodes "
+                     "are checked by an efficient predicate (a partial-assignment validity test or "
+                     "an inner 'does any choice work?' scan), e.g. CSP backtracking, branch-and-bound, "
+                     "or the inner loop of a polynomial DP recurrence."},
+            {"id": "quantum_backtracking.speedup_scope",
+             "text": "The speedup is at most QUADRATIC and applies to the TREE SEARCH / inner "
+                     "loop only. Any sequential outer structure (DP layer order, round count of a "
+                     "local search) is NOT accelerated -- the net gain is bounded by the share of "
+                     "runtime spent in the searchable part. Never claim a speedup for the whole "
+                     "algorithm when only a sub-step qualifies."},
+            {"id": "quantum_backtracking.oracle_access",
+             "text": "Node evaluation must be implementable as an efficient quantum oracle, and "
+                     "reaching the accelerated regime typically assumes QRAM-style access to the "
+                     "instance (state-loading cost must not itself erase the gain)."},
+        ],
+    },
+    {
+        "id": "qsvt",
+        "name": "Quantum Singular Value Transformation / block-encoding",
+        "classical_problem_types": ["sparse/structured linear algebra", "singular-value "
+                                    "estimation", "matrix functions", "Hamiltonian simulation"],
+        "speedup_class": "polynomial-to-exponential, under the same strict I/O conditions as HHL",
+        "prerequisites": [
+            {"id": "qsvt.block_encoding",
+             "text": "The operator must admit an efficient block-encoding (sparse + efficiently "
+                     "computable entries, or otherwise structured). This generalizes HHL, amplitude "
+                     "amplification, and Hamiltonian simulation into one framework."},
+            {"id": "qsvt.aggregate_readout",
+             "text": "You may only extract an AGGREGATE of the result (an expectation, a singular "
+                     "value, an overlap) -- NOT the full transformed vector. Same readout wall as "
+                     "HHL: if the required output is the whole vector/matrix, the speedup is erased."},
+            {"id": "qsvt.efficient_polynomial",
+             "text": "The target matrix function must be approximable by a low-degree polynomial of "
+                     "the singular values (well-conditioned / bounded-degree); otherwise the circuit "
+                     "depth blows up and the advantage is lost."},
+        ],
+    },
+    {
+        "id": "quantum_mean_estimation",
+        "name": "Quantum Mean / Moment Estimation",
+        "classical_problem_types": ["mean estimation of a random variable", "subgraph/edge counting",
+                                    "frequency moments", "high-variance Monte Carlo"],
+        "speedup_class": "up to quadratic over classical sampling in the accuracy/variance ratio",
+        "prerequisites": [
+            {"id": "quantum_mean_estimation.bounded_estimator",
+             "text": "The target must be the mean/expectation of a random variable produced by an "
+                     "efficient quantum sampler (a coherent implementation of the sampling process). "
+                     "Stronger than plain amplitude estimation: it handles relative-error mean "
+                     "estimation given a variance bound (the 'quantum Chebyshev' regime)."},
+            {"id": "quantum_mean_estimation.scalar_output",
+             "text": "The required output must be a small aggregate (a scalar mean or a few moments). "
+                     "If per-item outputs are required the readout bottleneck applies as usual."},
+        ],
+    },
 ]
 
 # ---------------------------------------------------------------------------

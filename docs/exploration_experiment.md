@@ -40,9 +40,18 @@ retry/resume to the runners; see the git history.)
 - **Swayed (answers disagreed across runs): 0/8.** Unlike Graph connectivity in the
   labeled set, none of these open-ended cases showed sampling instability.
 - **Stable non-"none" verdicts: 2/8** -- High-dimensional NNS (`grover`) and Monte
-  Carlo tree search (`amplitude_estimation`). These are the pipeline's closest thing
-  to a positive "discovery" output and the natural candidates for Layer-3 expert
-  review.
+  Carlo tree search (`amplitude_estimation`). These are the pipeline's stable
+  positive verdicts.
+
+  > **Correction (2026-07-09, after the novelty library was built).** These were
+  > originally described here as "closest to a discovery" and "candidates for
+  > Layer-3 expert review." The novelty filter now identifies **both as
+  > rediscoveries**: NNS → quantum nearest-neighbor (Wiebe-Kapoor-Svore 2015,
+  > proven); MCTS → Montanaro 2015 (and MCTS is sub-step-only — the rollout oracle,
+  > not the whole algorithm; see the honesty callout below). They are therefore
+  > **calibration evidence, not discovery candidates** — do not present them to an
+  > expert as potential new results. This is exactly the rediscovery-routing the
+  > funnel was built to do.
 
 > **How to state the MCTS verdict honestly.** The flat `recommendation` field reads
 > `amplitude_estimation`, but the underlying claim (identical in both runs) is

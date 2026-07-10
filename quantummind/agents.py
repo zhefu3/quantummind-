@@ -86,24 +86,56 @@ Requirements:
 - speedup_estimate: state it ONLY after honest accounting. If state preparation (loading)
   or readout (extracting the answer) costs O(N), the nominal speedup is erased -> say the
   net speedup is "none".
+- speedup_scope: the single most important honesty field. Choose exactly one:
+    * "full_algorithm" -- the whole algorithm's asymptotic complexity improves.
+    * "sub_step" -- ONLY an inner loop / rollout / sub-routine is accelerated while a
+      sequential outer structure (DP layer order, iteration/round count, adaptive
+      dependency) is UNCHANGED. The net gain is bounded by that step's share of runtime;
+      speedup_estimate MUST state the net, not the sub-step's local speedup. This is the
+      correct scope for quantum-backtracking inner loops and hybrid classical/quantum
+      schemes -- never dress a sub-step speedup up as a full-algorithm one.
+    * "conditional" -- a full speedup that holds ONLY under strict I/O conditions
+      (aggregate readout only, efficient loading, well-conditioning), HHL/QSVT-style.
+    * "none" -- no net speedup survives honest accounting.
 - io_accounting: explicitly reason about how the input is loaded and how the answer is read
   out, and whether either destroys the speedup.
 - novelty: is this a rediscovery of a known result, or genuinely unexplored? If the scheme
   is invalid (speedup erased), say so.
-- If the matcher recommended "none", return a scheme of "No viable quantization" with the
-  reason.
+- If the matcher recommended "none", return a scheme of "No viable quantization", scope
+  "none", with the reason.
 
 Output JSON with exactly these keys:
-{"scheme": str, "speedup_estimate": str, "io_accounting": str,
- "prerequisites": [str], "obstacles": [str], "novelty": str,
+{"scheme": str, "speedup_estimate": str, "speedup_scope": "full_algorithm|sub_step|conditional|none",
+ "io_accounting": str, "prerequisites": [str], "obstacles": [str], "novelty": str,
  "confidence": "high|medium|low"}"""
 
 
-def agent3_user(algorithm: dict, structure: dict, matching: dict) -> str:
+def _anchor_block(anchors: list) -> str:
+    """Near-neighbor anchoring (roadmap step 3): known results resembling this
+    problem, injected to force a grounded rediscovery-or-decisive-difference call.
+    Goes in the USER message (per-candidate, volatile) so the cached system prompt
+    is untouched, and only reaches Agent 3 -- Agent 2 stays quantum-blind."""
+    if not anchors:
+        return ""
+    lines = ["\n\nNEAREST KNOWN QUANTUM RESULTS (for novelty grounding only):"]
+    for a in anchors:
+        lines.append(f"- [{a['id']}] {a['problem']} -- status {a['status']}; "
+                     f"speedup: {a.get('speedup', '?')}; ref: {a.get('reference', '?')}")
+    lines.append(
+        "In your `novelty` field you MUST address these: state explicitly whether this "
+        "scheme REDUCES TO one of them (name which id -- that makes it a rediscovery) or "
+        "DIFFERS DECISIVELY (say precisely which structural condition differs). Do not "
+        "claim novelty without confronting the closest anchor. This does not change your "
+        "speedup analysis -- only how honestly you place the result against known work.")
+    return "\n".join(lines)
+
+
+def agent3_user(algorithm: dict, structure: dict, matching: dict, anchors: list = None) -> str:
     import json
     return (f"Algorithm: {algorithm['name']}\n\n"
             f"STRUCTURAL REPORT:\n{json.dumps(structure, indent=2)}\n\n"
-            f"MATCHER VERDICT:\n{json.dumps(matching, indent=2)}")
+            f"MATCHER VERDICT:\n{json.dumps(matching, indent=2)}"
+            f"{_anchor_block(anchors)}")
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +157,12 @@ CRITICAL DISCIPLINE -- over-claiming:
 - Check that speedup_estimate is actually consistent with io_accounting. If io_accounting
   admits an O(N) loading or readout cost, a speedup_estimate that is not "none" (or explicitly
   discounted) is a contradiction -- flag it.
+- Check speedup_scope against the reasoning. If the scheme accelerates only an inner loop /
+  rollout / sub-routine while a sequential outer structure remains (the structural report's
+  strong_adaptivity flag, an unchanged iteration/round/layer count), the scope MUST be
+  "sub_step" and the speedup_estimate MUST be the net (bounded by that step's runtime share).
+  A "full_algorithm" scope over an unaddressed sequential barrier, or a "sub_step" scope
+  paired with a whole-algorithm speedup number, is an over-claim -- flag it as unsound.
 - Check whether the scheme quietly ignores a barrier_flag (from the structural report) or a
   barrier_hit (from the matcher verdict) instead of addressing it.
 - Check that each item in prerequisites is actually justified by the structural report or

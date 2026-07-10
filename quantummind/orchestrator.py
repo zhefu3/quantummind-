@@ -11,16 +11,27 @@ Two independent refinement triggers, sharing the same MAX_ROUNDS budget:
 """
 
 from . import agents
+from .known_results import match_known_results
 from .llm_client import LLMClient
 
 MAX_ROUNDS = 3
 
 
-def analyze_algorithm(algorithm: dict, client: LLMClient, verbose: bool = True) -> dict:
+def analyze_algorithm(algorithm: dict, client: LLMClient, verbose: bool = True,
+                      anchoring: bool = False) -> dict:
     rounds = 0
     agent1_hint = ""
     agent2_hint = ""
     structure = None
+
+    # Near-neighbor anchoring (roadmap step 3, opt-in): the candidate's nearest
+    # known quantum results, computed once from its structure-level description and
+    # fed only to Agent 3 to ground its novelty call. Off by default so the blind
+    # pipeline (and comparability with recorded experiments) is preserved.
+    anchors = None
+    if anchoring:
+        anchors = match_known_results(
+            f"{algorithm['name']} {algorithm.get('description', '')}")
 
     while True:
         rounds += 1
@@ -53,7 +64,7 @@ def analyze_algorithm(algorithm: dict, client: LLMClient, verbose: bool = True) 
 
         # --- Agent 3: scheme ---
         scheme = client.complete_json(agents.AGENT3_SYSTEM,
-                                      agents.agent3_user(algorithm, structure, matching))
+                                      agents.agent3_user(algorithm, structure, matching, anchors))
         if verbose:
             print(f"  [round {rounds}] Agent 3 -> speedup: {scheme.get('speedup_estimate')}")
 
@@ -70,7 +81,7 @@ def analyze_algorithm(algorithm: dict, client: LLMClient, verbose: bool = True) 
 
         break
 
-    return {
+    result = {
         "algorithm": algorithm["name"],
         "rounds_used": rounds,
         "structure": structure,
@@ -80,3 +91,6 @@ def analyze_algorithm(algorithm: dict, client: LLMClient, verbose: bool = True) 
         "backend": client.backend,
         "model": client.model,
     }
+    if anchoring:
+        result["anchors_used"] = [a["id"] for a in (anchors or [])]
+    return result

@@ -53,6 +53,7 @@ def _md_report(result: dict) -> str:
 ## 3. Candidate scheme (Agent 3)
 - **Scheme:** {sc.get('scheme')}
 - **Speedup estimate:** {sc.get('speedup_estimate')}
+- **Speedup scope:** `{sc.get('speedup_scope', 'n/a')}`
 - **I/O accounting:** {sc.get('io_accounting')}
 - **Prerequisites:** {', '.join(sc.get('prerequisites', [])) or 'none'}
 - **Obstacles:** {', '.join(sc.get('obstacles', [])) or 'none'}
@@ -74,6 +75,9 @@ def main():
                     help="with --eval: independent runs per question, scored by "
                          "majority vote (default 1 = classic single-sample eval)")
     ap.add_argument("--algo", type=int, help="run one algorithm by index (0-based)")
+    ap.add_argument("--anchoring", action="store_true",
+                    help="near-neighbor anchoring: ground Agent 3 novelty in known_results "
+                         "(opt-in; off by default to keep the blind pipeline)")
     args = ap.parse_args()
 
     client = LLMClient()
@@ -105,7 +109,7 @@ def main():
 
     for algo in algos:
         print(f"Analyzing: {algo['name']}")
-        result = analyze_algorithm(algo, client)
+        result = analyze_algorithm(algo, client, anchoring=args.anchoring)
         slug = "".join(c if c.isalnum() else "_" for c in algo["name"])[:40]
         md_path = os.path.join(out_dir, f"report_{slug}.md")
         json_path = os.path.join(out_dir, f"result_{slug}.json")

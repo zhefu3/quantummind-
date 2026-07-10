@@ -39,6 +39,10 @@ def _signal(user: str) -> str:
         return "graph_iso"
     if "nearest neighbor" in u:
         return "nearest_neighbor"
+    if "condition number" in u or "singular value" in u or "block encoding" in u:
+        return "qsvt"
+    if "backtrack" in u or "search tree" in u or "constraint satisf" in u or "split point" in u:
+        return "backtracking"
     if "tree search" in u:
         return "tree_search"
     if "single target" in u or "one target" in u:
@@ -107,6 +111,17 @@ class MockBrain:
                                structural_features=["quantity expressible as an expectation/amplitude",
                                                     "output is a single scalar estimate"],
                                barrier_flags=[]),
+            "backtracking": dict(paradigm="backtracking search over a tree",
+                                 classical_complexity="exponential in the worst case",
+                                 bottleneck="the inner 'does any child satisfy the predicate' scan",
+                                 structural_features=["oracle-checkable node predicate",
+                                                      "single small output (feasible? / one witness)"],
+                                 barrier_flags=["sequential outer tree levels"]),
+            "qsvt": dict(paradigm="linear algebra", classical_complexity="O(N) to O(N^3)",
+                         bottleneck="repeated matrix-vector products",
+                         structural_features=["matrix is sparse / structured",
+                                              "output is a single scalar (a singular value / condition number)"],
+                         barrier_flags=[]),
             "generic": dict(paradigm="unclassified", classical_complexity="unknown",
                             bottleneck="unknown", structural_features=[], barrier_flags=[]),
         }
@@ -159,6 +174,20 @@ class MockBrain:
                          "justification":"Expectation estimation maps to amplitude estimation."}],
                 barrier_hits=[], gap_analysis="none",
                 recommendation="amplitude_estimation", overall_confidence="medium", note=""),
+            "backtracking": dict(
+                scores=[score("quantum_backtracking", "partial",
+                              "Tree search with an oracle-checkable node predicate fits quantum "
+                              "backtracking, but only the inner scan is accelerated.")],
+                barrier_hits=[], gap_analysis="none",
+                recommendation="quantum_backtracking", overall_confidence="medium",
+                note="Sub-step only: the outer tree levels stay sequential."),
+            "qsvt": dict(
+                scores=[score("qsvt", "partial",
+                              "Sparse matrix + scalar (singular-value) output fits QSVT under the "
+                              "usual aggregate-readout condition.")],
+                barrier_hits=[], gap_analysis="none",
+                recommendation="qsvt", overall_confidence="medium",
+                note="Conditional on block-encoding + aggregate readout."),
             "generic": dict(scores=[], barrier_hits=[], gap_analysis="insufficient information",
                             recommendation="none", overall_confidence="low"),
         }
@@ -219,11 +248,34 @@ class MockBrain:
                 prerequisites=["quantity expressible as an amplitude"],
                 obstacles=["requires coherent oracle for the sampled function"],
                 novelty="rediscovery (amplitude estimation)", confidence="medium"),
+            "backtracking": dict(
+                scheme="Grover/quantum-backtracking over the inner node scan; the outer tree "
+                       "recursion stays classical.",
+                speedup_estimate="net: quadratic on the inner scan only; whole-algorithm gain "
+                                 "bounded by the inner loop's share of runtime",
+                io_accounting="Node predicate as an oracle; output is O(1) -> no readout penalty.",
+                prerequisites=["efficient node-predicate oracle", "QRAM-style instance access"],
+                obstacles=["outer recursion not accelerated"],
+                novelty="rediscovery (Montanaro 2018-style DP/backtracking inner loop)",
+                confidence="medium"),
+            "qsvt": dict(
+                scheme="Block-encode the sparse matrix and estimate the extreme singular values "
+                       "via QSVT + amplitude estimation.",
+                speedup_estimate="conditional: polynomial in precision, no exponential in N",
+                io_accounting="Aggregate scalar output -> no readout wall; needs efficient "
+                              "block-encoding.",
+                prerequisites=["block-encodable matrix", "aggregate readout only"],
+                obstacles=["ill-conditioning inflates polynomial degree"],
+                novelty="rediscovery (QSVT singular-value estimation, Gilyen 2019)",
+                confidence="medium"),
             "generic": dict(scheme="insufficient information to propose a scheme",
                             speedup_estimate="unknown", io_accounting="N/A",
                             prerequisites=[], obstacles=[], novelty="unknown", confidence="low"),
         }
-        out = {"_mock": True}
+        scope = {"search": "full_algorithm", "periodic": "full_algorithm",
+                 "montecarlo": "full_algorithm", "backtracking": "sub_step",
+                 "qsvt": "conditional"}.get(sig, "none")
+        out = {"_mock": True, "speedup_scope": scope}
         out.update(table.get(sig, table["generic"]))
         return out
 
